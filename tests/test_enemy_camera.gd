@@ -33,6 +33,7 @@ func run_assertions() -> void:
 	hero.position = Vector3(0, 0, -1.3)
 	root.add_child(hero)
 	hero.set_physics_process(false)
+	_test_body_profiles(hero)
 	var guard = new_guard(Vector3.ZERO)
 	await physics_frame
 	await physics_frame
@@ -230,6 +231,26 @@ func run_assertions() -> void:
 		clear_motion=clear_motion and hero.get_world_3d().direct_space_state.intersect_shape(camera_query,1).is_empty()
 	check(clear_motion,"Actual camera sphere stays outside both walls throughout interpolated side escape")
 	check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),intended_before),"Corner rescue retains intended yaw")
+	var search_start: int=hero.camera_rig.searches
+	var unique_budget := true
+	for frame in 120:
+		hero.camera_rig.orbit(0.0001,0)
+		hero.camera_rig.update(1.0/120.0)
+		unique_budget=unique_budget and hero.camera_rig.candidate_count<=8
+	check(unique_budget and hero.camera_rig.searches-search_start<=11,"Continuous manual orbit cannot bypass the ten-Hz bounded eight-angle search budget")
+	search_start=hero.camera_rig.searches
+	var clear_frames := 0
+	var blocked_frames := 0
+	for frame in 60:
+		hero.camera.global_position=hero.global_position+(Vector3(-3,2,-3) if frame%2==0 else Vector3(3,2,3))
+		var actual: Dictionary=hero.camera_rig._visibility(0,hero.spring_arm.rotation.x,hero.camera_pivot.global_position.distance_to(hero.camera.global_position),true,hero.camera.global_position)
+		if actual.full: clear_frames+=1
+		else: blocked_frames+=1
+		hero.camera_rig.update(1.0/60.0)
+	check(clear_frames==30 and blocked_frames==30 and hero.camera_rig.searches-search_start<=11,"Alternating actual visibility cannot retrigger an immediate search inside the same rescue episode")
+	var short_actual: Dictionary=hero.camera_rig._visibility(0,hero.spring_arm.rotation.x,1.0,true,hero.global_position+Vector3.UP*1.4)
+	check(not short_actual.full,"A shortened actual arm cannot be classified clear from the ideal full-length candidate")
+	intended_before=hero.camera_rig.get_preferred_yaw()
 	hero.camera_rig.snap()
 	check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),intended_before),"Teleport snap preserves intended view while re-solving rescue")
 	var actor_record := preload("res://scripts/persistence/save_data.gd").actor(hero)
@@ -239,6 +260,29 @@ func run_assertions() -> void:
 	await physics_frame
 	for frame in 180: hero.camera_rig.update(0.016)
 	check(absf(angle_difference(hero.camera_pivot.rotation.y,intended_before))<0.001 and hero.spring_arm.spring_length>hero.camera_distance-0.01,"Opening the corner restores intended yaw and eases back to full distance")
+	search_start=hero.camera_rig.searches
+	for frame in 60: hero.camera_rig.update(1.0/60.0)
+	check(hero.camera_rig.searches==search_start,"A clear preferred view does not run repeated candidate searches")
+	check(not hero.camera_rig.rescue_episode,"Three clear preferred samples end the rescue episode after orientation returns")
+	hero.camera.global_position=hero.camera_pivot.global_position+Vector3.UP*0.5
+	hero.camera_rig.update(0.001)
+	check(hero.camera_rig.rescue_episode and hero.camera_rig.rescue_offset==0.0,"A transient shortened actual arm starts verification even when the preferred yaw is usable")
+	for frame in 40:
+		hero.camera.global_position=hero.camera_pivot.global_position+(Basis(Vector3.UP,hero.camera_rig.get_preferred_yaw())*Basis(Vector3.RIGHT,hero.camera_rig.preferred_pitch)).z*hero.camera_distance
+		hero.camera_rig.update(0.01)
+	check(not hero.camera_rig.rescue_episode,"Transient short-arm recovery completes its clear streak without requiring a nonzero yaw escape")
+	search_start=hero.camera_rig.searches
+	hero.camera.global_position=hero.camera_pivot.global_position+Vector3.UP*0.5
+	hero.camera_rig.update(0.001)
+	check(hero.camera_rig.searches==search_start+1,"A later independent failure receives one immediate search after the prior episode ends")
+	barrier=wall(hero.position+Vector3(-1.1,1.4,0),Vector3(0.2,2.8,6))
+	await physics_frame
+	hero.camera_rig.rescue_offset=-PI/2
+	hero.camera_rig.clear_streak=0
+	var safe_return: float=hero.camera_rig._select_offset(true)
+	check(is_zero_approx(safe_return) and hero.camera_rig.clear_streak==1,"Blocked incumbent yields immediately to clear preferred view without waiting for hysteresis")
+	barrier.free()
+	await physics_frame
 	hero.camera_rig.restore_view(0.7,deg_to_rad(-60))
 	check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),0.7) and preload("res://scripts/persistence/save_data.gd").valid_actor(preload("res://scripts/persistence/save_data.gd").actor(hero)),"Explicit loaded yaw and -60-degree pitch remain save-valid")
 	hero.camera_rig.touch_index = 7
@@ -269,10 +313,75 @@ func run_assertions() -> void:
 	hero.position = Vector3(40, 0, 40)
 	hero.camera_rig.snap()
 	check(hero.camera_pivot.global_position.distance_to(hero.position + Vector3.UP * hero.camera_height) < 0.01, "Floor teleport explicitly snaps camera anchor")
+	await _test_town_camera(hero)
 	hero.free()
 	factory.free()
 	await _test_retry()
 	Services.game_state().reset()
+
+func _test_body_profiles(hero: Node3D) -> void:
+	var visual: Node3D=hero.get_node("Visual")
+	visual.set_process(false)
+	var out: Array[Vector3]=[]
+	var stable_count := visual.get_child_count()
+	for id: String in ["melee_hero","swordsman","riftwarden","battlemage","devourer"]:
+		visual.apply_character(id)
+		var valid: bool=visual.write_camera_probes(out) and out.size()==6
+		for point in out: valid=valid and point.is_finite()
+		check(valid,"%s provides six finite cached body probes"%id)
+		var first := out.duplicate()
+		var profile: RefCounted=visual.camera_profile
+		var attached: Node3D=profile.nodes[0]
+		var original := attached.transform
+		attached.position.x+=0.1
+		visual.write_camera_probes(out)
+		check(out[0].distance_to(first[0])>0.09,"%s probes follow their cached art node rather than frozen world positions"%id)
+		attached.transform=original
+		visual.rotation.y=0.7
+		visual.write_camera_probes(out)
+		check(out[0].distance_to(first[0])>0.05,"%s probes transform with current Visual orientation"%id)
+		visual.rotation.y=0
+		if id=="devourer":
+			var shell: MeshInstance3D=visual.get_node("DevourerArt/Shell")
+			var lower_ok := true
+			for index in 4:
+				var local: Vector3=shell.global_transform.affine_inverse()*out[index]
+				lower_ok=lower_ok and absf(local.y+0.30/shell.scale.y)<0.0001 and Vector2(local.x,local.z).length()<0.5
+			check(lower_ok,"Devourer lower probes come from its actual shell slice inside the spherical envelope")
+		else:
+			visual._apply_pose(preload("res://scripts/utilities/character_motion.gd").sample(6,1.2,0,0,1,0,false,{}))
+			visual.write_camera_probes(out)
+			check(out[0].distance_to(first[0])>0.01,"%s running legs update the cached lower-body envelope"%id)
+		visual.reset_motion()
+		visual.apply_character(id)
+		check(visual.camera_profile==profile and visual.get_child_count()==stable_count,"%s swaps reuse the profile without accumulating art nodes"%id)
+	visual.apply_character("melee_hero")
+	visual.set_process(true)
+
+func _test_town_camera(hero: Node3D) -> void:
+	var house: Node3D=preload("res://scenes/georama/town_visuals.gd").make(load("res://data/georama/mayor_house.tres"),{"components":{"Roof":"roof","Door":"door"}})
+	house.position=Vector3(50,0,50)
+	root.add_child(house)
+	# The existing town proximity system opens this ready door while walking.
+	house.get_node("Door/Collision").disabled=true
+	await physics_frame
+	var shape := SphereShape3D.new()
+	shape.radius=0.23
+	var camera_query := PhysicsShapeQueryParameters3D.new()
+	camera_query.shape=shape
+	camera_query.collision_mask=1
+	for local: Vector3 in [Vector3(0,0.1,-3.4),Vector3(0,0.1,-2.3),Vector3(2.1,0.1,2.1)]:
+		hero.position=house.to_global(local)
+		for pitch: float in [-40.0,-60.0]:
+			hero.camera_rig.restore_view(0.4,deg_to_rad(pitch))
+			await physics_frame
+			await physics_frame
+			camera_query.transform=Transform3D(Basis.IDENTITY,hero.camera.global_position)
+			check(hero.get_world_3d().direct_space_state.intersect_shape(camera_query,1).is_empty() and is_equal_approx(hero.camera_rig.get_preferred_yaw(),0.4) and hero.spring_arm.rotation.x>=deg_to_rad(-60)-0.001,"Existing house doorway/interior camera remains collision-safe and preserves intended view at %s/%s"%[local,pitch])
+		hero.camera_rig.orbit(0.2,0)
+		hero.camera_rig.update(0.016)
+		check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),0.6),"Manual orbit remains available inside the town house")
+	house.free()
 
 func _test_retry() -> void:
 	var dungeon = load("res://scenes/dungeon/dungeon_manager.tscn").instantiate()

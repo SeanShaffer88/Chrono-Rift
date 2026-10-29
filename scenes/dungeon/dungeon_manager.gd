@@ -80,6 +80,11 @@ func start_saving(path: String = "user://saves/autosave.json") -> void:
 	label.text = save_session.status
 	save_session.status_changed.connect(func(text: String): label.text = text)
 	$TouchUI.add_child(label)
+	var recovery := preload("res://scenes/ui/save_recovery_menu.gd").new()
+	recovery.name="SaveRecoveryMenu"
+	recovery.session=save_session
+	recovery.status_label=label
+	$TouchUI.add_child(recovery)
 	_layout_safe_ui.call_deferred()
 	_finish_title_startup.call_deferred()
 
@@ -209,6 +214,8 @@ func _layout_safe_ui() -> void:
 	if _save_label!=null:
 		_save_label.add_theme_font_size_override("font_size",m.secondary)
 		_save_label.position=safe.position+Vector2(0,_hud.get_combined_minimum_size().y+m.gap)
+		var recovery := get_node_or_null("TouchUI/SaveRecoveryMenu")
+		if recovery!=null: recovery.refresh()
 func _settle_defeat() -> void:
 	_defeat_ui.size=_defeat_size
 	_defeat_ui.position=Layout.safe_rect(get_viewport()).get_center()-_defeat_ui.size/2

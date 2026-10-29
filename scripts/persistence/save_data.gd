@@ -31,6 +31,31 @@ static func actor(hero: Node3D) -> Dictionary:
 static func valid_actor(value: Variant) -> bool:
 	return value is Dictionary and vector(value.get("position")) and vector(value.get("facing"), 1.01) and number(value.get("hp"), 0, 100, true) and number(value.get("yaw"), -100000, 100000) and number(value.get("pitch"), deg_to_rad(-60.0)-0.000001, -0.2)
 
+static func make_fresh_snapshot(seed_value: int) -> Dictionary:
+	if not number(seed_value,-2147483648,2147483647,true): return {}
+	var floor_plan := preload("res://scenes/dungeon/floor_generator.gd").new()
+	if not floor_plan.generate(seed_value,1,false):
+		floor_plan.free()
+		return {}
+	var position_value: Vector3=floor_plan.cell_to_world(floor_plan.spawn_cell)+Vector3.UP*0.1
+	var encounters: Array=[]
+	for role: String in preload("res://scripts/combat/enemy_profiles.gd").ROLES:
+		encounters.append({"id":role,"hp":preload("res://scripts/combat/enemy_profiles.gd").profile(role).hp if floor_plan.encounter_plan.has(role) else 0})
+	floor_plan.free()
+	var inventories := {}
+	for id: String in Roster.HEROES:
+		var records: Array=[]
+		var starter: Resource=Roster.HEROES[id].starter
+		if starter!=null:
+			var elements: Array=[]
+			var slayers: Array=[]
+			for key in range(1,6): elements.append(starter.elemental_stats.get(key,0))
+			for key in range(1,8): slayers.append(starter.slayer_stats.get(key,0))
+			records.append({"id":starter.weapon_id,"attack":starter.base_attack,"durability":starter.max_durability,"maximum":starter.max_durability,"rate":starter.degradation_rate,"destroy":starter.destroy_on_break,"elements":elements,"slayers":slayers})
+		inventories[id]={"weapons":records,"equipped":-1 if records.is_empty() else 0}
+	var result := {"active":"melee_hero","secret_unlocked":false,"thirst":100.0,"atla":[],"orbs":{},"town":{},"town_completed":false,"inventories":inventories,"dungeon_seed":seed_value,"floor_number":1,"hero":{"position":pack_vector(position_value),"hp":100,"facing":[0,0,-1],"yaw":0.0,"pitch":deg_to_rad(-40)},"floor":{"key":false,"guard_defeated":false,"guard_hp":60,"healing":[],"encounters":encounters},"town_visit":{}}
+	return result if validate(result) else {}
+
 static func capture(state: Node, dungeon: Node) -> Dictionary:
 	var inventories := {}
 	for id: String in Roster.HEROES:
