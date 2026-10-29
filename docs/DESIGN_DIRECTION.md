@@ -9,6 +9,10 @@
   handcrafted-looking spaces, atmosphere and environmental storytelling. This
   reference does not by itself authorize narration, a fixed isometric camera or
   replacing the approved Dark Cloud loop with another combat/progression system.
+- **World of Warcraft:** the user's final inspiration source. Draw on distinct
+  zone identities, readable stylized silhouettes, memorable landmarks and
+  environmental storytelling within the approved steampunk dungeon/papercraft
+  town treatment. This reference alone introduces no MMO or online requirements.
 
 Use original identities and properly licensed assets. Create mockups before visual
 changes, then compare actual gameplay captures against the target. Improve art
