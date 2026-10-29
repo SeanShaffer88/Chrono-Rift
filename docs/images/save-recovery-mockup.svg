@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="960" viewBox="0 0 1400 960">
+<rect width="1400" height="960" fill="#24343c"/>
+<g fill="#142432" stroke="#aac6ce" stroke-width="2"><rect x="30" y="80" width="1340" height="210" rx="8"/><rect x="180" y="370" width="1040" height="500" rx="10"/></g>
+<g fill="#335868" stroke="#80abb8" stroke-width="2"><rect x="1040" y="164" width="300" height="96" rx="4"/><rect x="210" y="734" width="240" height="96" rx="4"/><rect x="480" y="734" width="710" height="96" rx="4"/></g>
+<g fill="#c5d9df" font-size="30"><text x="30" y="44" font-size="32">Save recovery: existing menu style / explicit manual action</text>
+<text x="55" y="125">HP 100 / 100</text><text x="55" y="205">Earlier save version. Existing files preserved.</text><text x="1100" y="225">Recovery</text>
+<text x="210" y="425" font-size="36">Save recovery</text><text x="210" y="490">This save was created by an earlier game version.</text><text x="210" y="545">Back up the existing files, then start a fresh game.</text><text x="210" y="600">The backup is verified before a fresh save is installed.</text><text x="210" y="655">If recovery fails, your existing files stay preserved.</text>
+<text x="270" y="795">Cancel</text><text x="620" y="795">Back up &amp; start fresh</text>
+<text x="30" y="925" font-size="24">Android example: 96-logical targets at 480DPI / 1.5x. No scrolling. Safe-area bounds retained.</text></g></svg>

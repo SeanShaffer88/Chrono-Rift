@@ -15,6 +15,12 @@ var legs: Array[Node3D] = []
 var phase := 0.0
 var swallow_time := 0.0
 var devourer := false
+var camera_profiles: Dictionary = {}
+var camera_profile: RefCounted
+var camera_profile_revision := 0
+
+func write_camera_probes(out: Array[Vector3]) -> bool:
+	return camera_profile != null and camera_profile.write(out)
 var variant_nodes: Dictionary = {"melee_hero": [], "swordsman": [], "riftwarden": [], "battlemage": []}
 
 func part(label: String, size: Vector3, at: Vector3, color: Color) -> MeshInstance3D:
@@ -266,6 +272,11 @@ func apply_character(id: String) -> void:
 			if node.name not in ["DevourerArt","WeaponPivot"]: node.hide()
 	$DevourerArt.visible=devourer
 	reset_motion()
+	var profile_key := "core" if devourer else "humanoid"
+	if not camera_profiles.has(profile_key):
+		camera_profiles[profile_key]=preload("res://scripts/utilities/camera_body_profile.gd").new(self,devourer)
+	camera_profile=camera_profiles[profile_key]
+	camera_profile_revision+=1
 
 func swallow_cue() -> void:
 	swallow_time=0.22

@@ -64,6 +64,21 @@ func run_assertions() -> void:
 	var cap_mesh: MeshInstance3D = art.get_node("FacetedSlateCap")
 	check(cap_mesh.mesh.get_faces().size() <= Art.rock_cap_layout(layout.walkable,1337).size()*36 and cap_mesh.mesh.get_surface_count()==1,"Slate cap uses bounded fixed triangles per cell in one opaque surface")
 	check(cap_mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and art.has_node("QuietGrout"),"Surface polish adds no cap shadows and includes quiet grout")
+	var coping_fixture := Node3D.new()
+	Art._masonry(coping_fixture,{Vector2i(1,1):true},1337)
+	var masonry: MeshInstance3D=coping_fixture.get_node("MasonryCourses")
+	var faces := masonry.mesh.get_faces()
+	var coping_count := 0
+	var coping_safe := true
+	for first in range(0,faces.size(),36):
+		var box := AABB(faces[first],Vector3.ZERO)
+		for index in range(first,first+36): box=box.expand(faces[index])
+		if absf(box.size.y-0.16)>0.0001: continue
+		coping_count+=1
+		var front := maxf(absf(box.get_center().x-2)-box.size.x*0.5,absf(box.get_center().z-2)-box.size.z*0.5)
+		coping_safe=coping_safe and box.end.y<=2.80001 and front>=1.00499
+	check(coping_count==4 and coping_safe,"All four coping faces stay below the physical wall top and inside its solid footprint")
+	coping_fixture.free()
 	var positions: Dictionary = {}
 	var floor_instances := 0
 	var plan := Art.dungeon_layout(layout.walkable, 1337)

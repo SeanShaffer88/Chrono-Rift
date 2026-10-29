@@ -120,7 +120,8 @@ static func _rock_backing(parent: Node3D,walkable: Dictionary,seed_value: int,bi
 	for patch: Dictionary in patches:
 		var points: PackedVector3Array = patch.corners
 		for index in 4:
-			cap.surface.set_color((Color("dce6dc") if biome == "frost" else slate).lightened((patch.shade%5-2)*0.012))
+			var tone: float=[0.88,0.94,1.0,1.06][index]
+			cap.surface.set_color((Color("dce6dc") if biome == "frost" else slate).lightened((patch.shade%5-2)*0.012)*Color(tone,tone,tone))
 			# Clockwise triangles produce upward normals in Godot.
 			for point in [points[index],points[(index+1)%4],patch.peak]:
 				cap.surface.add_vertex(point)
@@ -217,7 +218,7 @@ static func _masonry(parent: Node3D, walkable: Dictionary, seed_value: int,biome
 				else:
 					bake.box(Vector3(0.97,0.855,0.075),Vector3(0,1.38,0.02),tone)
 					for x in [-0.76,0.76]: bake.box(Vector3(0.455,0.855,0.075), Vector3(x,1.38,0.02),tone.darkened(0.025))
-			bake.box(Vector3(2.0,0.16,0.12), Vector3(0,2.78,0.01), Color("7f8b83"))
+			bake.box(Vector3(2.0,0.16,0.12), Vector3(0,2.72,-0.025), Color("7f8b83"))
 			var along: int = cell.x if direction.y != 0 else cell.y
 			if posmod(along,3) == 0:
 				bake.box(Vector3(0.34,2.8,0.24), Vector3(0,1.4,0.045), Color("73847f"))

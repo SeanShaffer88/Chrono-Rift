@@ -1,6 +1,7 @@
 extends Node
 ## Main-scene owned autosave. Tests/fixtures opt in with an isolated file path.
 signal status_changed(text: String)
+signal diagnostic_changed(diagnostic: Dictionary)
 const Data = preload("res://scripts/persistence/save_data.gd")
 const Store = preload("res://scripts/persistence/save_store.gd")
 const Services = preload("res://scripts/utilities/services.gd")
@@ -13,12 +14,17 @@ var _dirty_elapsed := 0.0
 var _loaded := false
 var _recovered := false
 var _connections: Array[Dictionary] = []
+var diagnostic: Dictionary={}
+var _last_logged_diagnostic := ""
+var _recovering := false
 
 func start(owner_dungeon: Node, path: String = "user://saves/autosave.json") -> void:
+	print("SAVE_BUILD ",ProjectSettings.get_setting("application/config/version","unknown"))
 	dungeon = owner_dungeon
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	store = Store.new(path, Data.validate)
 	var result: Dictionary = store.read_save()
+	_publish_diagnostic()
 	_recovered = result.status == "recovered"
 	if result.status in ["ok", "recovered"]:
 		_restore(result.data)
@@ -41,28 +47,82 @@ func _listen(event: Signal) -> void:
 	_connections.append({"signal": event, "callback": callback})
 
 func queue_save() -> void:
+	if _recovering: return
 	if not _dirty:
 		_dirty_elapsed = 0.0
 	_dirty = true
 
 func _process(delta: float) -> void:
-	if not _loaded: return
+	if not _loaded or _recovering: return
 	_elapsed += delta
 	_dirty_elapsed += delta
 	if (_dirty and _dirty_elapsed >= 0.3) or _elapsed >= 5.0:
 		flush()
 
 func flush() -> Error:
-	if not _loaded or not is_instance_valid(dungeon) or dungeon.floor_generator.cleared:
+	if _recovering or not _loaded or not is_instance_valid(dungeon) or dungeon.floor_generator.cleared:
 		return ERR_BUSY
 	_elapsed = 0.0
 	_dirty = false
 	if store.blocked:
+		_publish_diagnostic()
 		return ERR_INVALID_DATA
 	_set_status("Saving…")
 	var error: Error = store.write_save(Data.capture(Services.game_state(), dungeon))
+	_publish_diagnostic()
 	_set_status(("Saved (backup recovered)" if _recovered else "Saved") if error == OK else "Save unavailable — progress not saved")
 	return error
+func _publish_diagnostic() -> void:
+	diagnostic=store.last_diagnostic.duplicate()
+	var encoded := JSON.stringify(diagnostic)
+	if encoded!=_last_logged_diagnostic:
+		print("SAVE_DIAGNOSTIC ",encoded)
+		_last_logged_diagnostic=encoded
+		diagnostic_changed.emit(diagnostic.duplicate())
+func can_start_fresh() -> bool:
+	return not _recovering and store.blocked and diagnostic.get("stage") in ["read_primary","read_backup"] and diagnostic.get("reason") in ["unsupported_schema","oversize","json_invalid","checksum_invalid","payload_invalid","validation_failed"]
+func display_status() -> String:
+	if _recovered and not store.blocked and diagnostic.get("stage") in ["read_primary","read_backup"]: return status
+	match diagnostic.get("reason","none"):
+		"unsupported_schema": return "Save version %s unsupported."%str(diagnostic.encountered_schema).trim_suffix(".0")
+		"json_invalid","payload_invalid","checksum_invalid": return "Save file failed its integrity check."
+		"validation_failed": return "Existing save data is invalid." if diagnostic.get("stage") in ["read_primary","read_backup"] else "Current state could not be saved."
+		"recovery_pending": return "Save recovery needs attention."
+		"open_failed": return "Save file could not be opened."
+		"oversize": return "Save exceeds the supported size."
+		"write_failed","rename_failed": return "Save storage operation failed."
+	return status
+func details(include_status: bool=true) -> String:
+	var message := display_status() if include_status else ""
+	if diagnostic.get("reason")=="unsupported_schema":
+		message+="\nThis save is from an %s game format."%("earlier" if float(diagnostic.encountered_schema)<Store.VERSION else "newer")
+	message+="\nBuild: %s\nSave format: %s; required: %d\nOperation: %s\nStorage error: %s\nFile bytes: %d"%[ProjectSettings.get_setting("application/config/version","unknown"),str(diagnostic.get("encountered_schema",-1)).trim_suffix(".0"),Store.VERSION,str(diagnostic.get("stage","")).replace("_"," ").capitalize(),"None" if int(diagnostic.get("error",OK))==OK else error_string(int(diagnostic.error)),int(diagnostic.get("bytes",0))]
+	return message.strip_edges()
+func start_fresh_with_backup() -> Dictionary:
+	if _recovering or not can_start_fresh():
+		return {"ok":false,"error":ERR_BUSY,"reason":"recovery_pending","archive_path":"","rollback_ok":true}
+	var fresh := Data.make_fresh_snapshot(dungeon.dungeon_seed)
+	if fresh.is_empty(): return {"ok":false,"error":ERR_INVALID_DATA,"reason":"validation_failed","archive_path":"","rollback_ok":true}
+	_recovering=true
+	var paused := get_tree().paused
+	get_tree().paused=true
+	for joystick: Node in get_tree().get_nodes_in_group("virtual_joystick"):
+		if joystick.has_method("_release"): joystick._release()
+	for control: Node in dungeon.get_node("TouchUI").get_children():
+		if control.has_method("_release"): control._release()
+	var result: Dictionary=store.start_fresh_with_backup(fresh)
+	if result.ok:
+		if is_instance_valid(dungeon.town_view): dungeon.close_town()
+		_restore(fresh)
+		_recovered=false
+		_dirty=false
+		_elapsed=0
+		_dirty_elapsed=0
+	_publish_diagnostic()
+	_set_status("Saved" if result.ok else "Recovery did not complete — saving remains paused")
+	get_tree().paused=paused
+	_recovering=false
+	return result
 
 func _restore(data: Dictionary) -> void:
 	Data.apply_state(Services.game_state(), data)

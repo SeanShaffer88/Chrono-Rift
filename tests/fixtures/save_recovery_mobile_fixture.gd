@@ -1,0 +1,108 @@
+extends "res://tests/fixtures/menu_mobile_fixture.gd"
+const Data=preload("res://scripts/persistence/save_data.gd")
+const Store=preload("res://scripts/persistence/save_store.gd")
+const Recovery=preload("res://scripts/persistence/save_recovery.gd")
+func write(path: String,text: String) -> void:
+	var file := FileAccess.open(path,FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+func hashes(path: String) -> Dictionary:
+	var result := {}
+	for suffix in Recovery.SUFFIXES: result[suffix]=FileAccess.get_sha256(path+suffix)
+	return result
+func adb_tap(button: Button,label: String) -> void:
+	await settle()
+	var physical: Vector2=get_viewport().get_screen_transform()*button.get_global_rect().get_center()
+	print("MENU_QA TAP: ",label," ",roundi(physical.x)," ",roundi(physical.y))
+	await get_tree().create_timer(1.3).timeout
+	await settle()
+func new_dungeon() -> Node:
+	var scene=load("res://scenes/dungeon/dungeon_manager.tscn").instantiate()
+	add_child(scene)
+	scene.get_node("MeleeHero").set_physics_process(false)
+	scene.floor_generator.guard.set_physics_process(false)
+	for enemy: Node in scene.floor_generator.encounters.values(): enemy.set_physics_process(false)
+	return scene
+func run() -> void:
+	var state=get_tree().root.get_node("GameState")
+	state.reset()
+	state.swap_character("riftwarden")
+	var root_path := "user://qa-recovery-%d-%d"%[OS.get_process_id(),Time.get_ticks_usec()]
+	DirAccess.make_dir_recursive_absolute(root_path)
+	var path := root_path.path_join("autosave.json")
+	var user_root := ProjectSettings.globalize_path("user://").replace("\\","/").trim_suffix("/")
+	var root_parent := DirAccess.open(user_root.get_base_dir())
+	var root_directory := DirAccess.open(user_root)
+	print("MENU_QA PATH_BOUNDARY ",JSON.stringify({"root_parent_open":root_parent!=null,"root_link":root_parent.is_link(user_root.get_file()) if root_parent!=null else false,"root_open":root_directory!=null,"root_safe":Recovery.safe_local_path("user://"),"archives_safe":Recovery.safe_local_path(Recovery.ARCHIVES),"owned_dir_safe":Recovery.safe_local_path(root_path),"owned_file_safe":Recovery.safe_local_path(path)}))
+	for suffix in Recovery.SUFFIXES: write(path+suffix,JSON.stringify({"version":3,"fixture":str(suffix)}))
+	var original := hashes(path)
+	dungeon=new_dungeon()
+	dungeon.floor_number=5
+	dungeon._load_floor()
+	stop_actors()
+	dungeon.start_saving(path)
+	await settle()
+	var menu=dungeon.get_node("TouchUI/SaveRecoveryMenu")
+	print("MENU_QA METRICS ",JSON.stringify({"build":ProjectSettings.get_setting("application/config/version","unknown"),"dpi":DisplayServer.screen_get_dpi(),"screen_transform":str(get_viewport().get_screen_transform()),"safe":str(Layout.safe_rect(get_viewport()))}))
+	check(dungeon.persistence_path!=path and dungeon.save_session.store.path==path,"Recovery QA uses an isolated owned file, never the shipping autosave")
+	check(menu.launch.visible and menu.launch.text=="Recovery" and dungeon.save_session.display_status().contains("3"),"Unsupported save shows its actual version and explicit recovery action")
+	check(menu.launch.get_global_rect().position.x>get_viewport().get_visible_rect().size.x*0.45,"Recovery launcher stays outside joystick capture zone")
+	await capture("unsupported-status")
+	await adb_tap(menu.launch,"open-recovery")
+	check(menu.opened and get_tree().paused,"Actual ADB touch opens Recovery without joystick stealing it")
+	await capture("recovery-confirm")
+	check_buttons(menu,"Recovery confirmation")
+	check("".join(menu.notes.pages)==menu.notes.text,"Recovery pages retain all explanation and local diagnostic text")
+	if menu.notes.pages.size()>1:
+		await adb_tap(menu.notes.next,"details-next")
+		check(menu.notes.page_index==1,"Actual ADB Next reaches the next diagnostic page")
+		await adb_tap(menu.notes.previous,"details-previous")
+		check(menu.notes.page_index==0,"Actual ADB Previous returns to the first explanation page")
+	for page in menu.notes.pages.size():
+		menu.notes.change_page(page-menu.notes.page_index)
+		await settle()
+		check(menu.notes.body_holder.get_global_rect().end.y<=menu.actions.get_global_rect().position.y+1,"Recovery page text ends before pinned actions")
+	await adb_tap(menu.cancel,"cancel-recovery")
+	check(not menu.opened and not get_tree().paused and hashes(path)==original and dungeon.floor_number==5,"Actual Cancel preserves all original files and live progress")
+	await adb_tap(menu.launch,"reopen-recovery")
+	await adb_tap(menu.confirm,"confirm-fresh")
+	stop_actors()
+	var archive: String=Recovery.journal_state(path).archive
+	var exact := true
+	for index in Recovery.NAMES.size(): exact=exact and FileAccess.get_sha256(archive.path_join(Recovery.NAMES[index]))==original[Recovery.SUFFIXES[index]]
+	check(exact,"Android archive preserves all four original files byte-for-byte")
+	check(dungeon.floor_number==1 and state.active_character_id=="melee_hero" and not state.secret_unlocked and dungeon.get_node("MeleeHero").current_hp==100,"Confirmed Android recovery resets live progress only after commit")
+	check(FileAccess.get_sha256(path)==FileAccess.get_sha256(path+".bak") and not Recovery.journal_state(path).pending,"Android fresh primary and backup match with completed journal")
+	await capture("recovery-complete")
+	check_buttons(menu,"Recovery result")
+	await adb_tap(menu.cancel,"continue-fresh")
+	check(not menu.opened and not get_tree().paused,"Actual Continue restores gameplay input")
+	dungeon.queue_free()
+	await settle()
+	state.reset()
+	dungeon=new_dungeon()
+	dungeon.start_saving(path)
+	await settle()
+	menu=dungeon.get_node("TouchUI/SaveRecoveryMenu")
+	check(dungeon.floor_number==1 and state.active_character_id=="melee_hero" and dungeon.get_node("MeleeHero").current_hp==100 and not menu.launch.visible,"Fresh snapshot survives manager restart without repeated recovery prompts")
+	await capture("fresh-reloaded")
+	var before := FileAccess.get_sha256(path)
+	dungeon.get_node("MeleeHero").current_hp=101
+	check(dungeon.save_session.flush()!=OK and dungeon.save_session.diagnostic.reason=="validation_failed" and not dungeon.save_session.can_start_fresh(),"Invalid current capture is diagnosed without offering destructive recovery")
+	check(FileAccess.get_sha256(path)==before,"Invalid current capture leaves committed save bytes intact")
+	dungeon.get_node("MeleeHero").current_hp=100
+	await capture("capture-error-details")
+	dungeon.queue_free()
+	await settle()
+	var backup_path := root_path.path_join("backup-case.json")
+	var backup_store := Store.new(backup_path,Data.validate)
+	var candidate := Data.make_fresh_snapshot(1337)
+	candidate.hero.hp=37
+	check(backup_store.write_save(candidate)==OK,"Isolated valid backup fixture is committed")
+	write(backup_path,"truncated primary")
+	dungeon=new_dungeon()
+	dungeon.start_saving(backup_path)
+	menu=dungeon.get_node("TouchUI/SaveRecoveryMenu")
+	check(dungeon.get_node("MeleeHero").current_hp==37 and not dungeon.save_session.can_start_fresh() and dungeon.save_session.status=="Recovered backup save","Corrupt primary loads a valid backup without resetting progress")
+	await capture("backup-recovered")
+	print("MENU_QA COMPLETE failures=%d assertions=%d"%[failures,assertions])
