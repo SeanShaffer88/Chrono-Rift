@@ -5,22 +5,30 @@ the scene tree and offers three original heroes with one shared combat model:
 
 | Character | Visual direction | Protected starter |
 | --- | --- | --- |
-| Adventurer | Brown hair, leather, teal scarf | Battle Wrench |
-| Swordsman | Silver hair, charcoal coat, shoulder guard | Duskblade |
-| Riftwarden | Ivory mask, emerald eyes, crimson cape | Crescent Chain |
+| Infiltrator | Blond paper hair, green tunic and pointed cap, back-mounted decorative shield | Trail Sword |
+| Shadowblade | Silver paper hair, dark folded coat | Buster Sword |
+| Riftwarden | Ivory mask, dark hood, crimson folded cape | Red Energy Sword |
 
-The swordsman and warden take silhouette inspiration from Sephiroth and Spawn;
-their names, costume geometry and models are original. Concept boards are
-aspirational art, distinct from current procedural in-game meshes.
+Display names changed; internal character IDs remain `melee_hero`, `swordsman`
+and `riftwarden`. Weapon IDs/resources `duskblade` and `rift_chain` retain
+stats, owner inventories, wear, save records and combat hitboxes. The new
+Infiltrator starter `trail_sword` copies the old Battle Wrench's stats and
+build-up policy; old wrench saves and art remain supported.
 
-Switching preserves current HP, position, camera, floor progress, thirst and
-town state. Each hero retains their own inventory, equipment and weapon wear.
-Switching cancels an active swing and cannot revive a dead player. Damage,
-combo timings, dodge and hit range are shared. The chain is linked metal geometry
-ending in a curved blade, animated by the shared melee swing; it is not yet a
-physics chain, ranged grapple or separate ability. New starters have the same
-base attack and durability as Battle Wrench. Evolution branches for the two new
-weapon families await their own data; the original wrench branch remains.
+Switching preserves HP, position, camera, floor progress, thirst and town state.
+Each hero retains their inventory, equipment and wear. Shared damage/combo/dodge
+rules remain. Shadowblade's original steel slab silhouette has a broad body,
+flat spine and clipped tip. Riftwarden's old `ChainBlade` construction path now
+builds a compact grip with two separated red prongs and pale inner layers; it
+has no visible chain. Its opaque material uses restrained emission without
+new lights, shaders, transparency, particles or bloom. These are visual changes,
+not new abilities. Infiltrator keeps a straight steel blade with a blue-purple winged guard and wrapped grip; his shield is secured diagonally to the back on the body pose, leaving the left hand empty. The shield has no gameplay mechanics. Historical concept prompts are preserved; current concept
+boards remain aspirational and distinct from actual in-game captures.
+
+This art/camera pass was initially source-only; later explicit authorization
+allowed native and Android validation. Updated regressions retain legacy wrench
+support and verify new starter, energy prongs, body-mounted shield and camera
+clearance. See outputs/Validation-results.txt for exact results and limits.
 
 A small dark red electrical companion follows every selected hero in dungeons.
 It scans every 0.15 seconds within 3 world units of the player and requires a

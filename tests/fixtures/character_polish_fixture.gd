@@ -55,6 +55,10 @@ func _run() -> void:
 		camera.position.z = 4.6
 		camera.look_at(Vector3(0,1.05,0),Vector3.UP)
 		await capture(id + "-back")
+		camera.position=Vector3(4.6,2.15,0)
+		camera.look_at(Vector3(0,1.05,0),Vector3.UP)
+		await capture(id+"-side")
+		camera.position=Vector3(2.7,2.15,-4.6)
 		camera.position.z = -4.6
 		camera.look_at(Vector3(0,1.05,0),Vector3.UP)
 		hero.velocity = Vector3(6,0,0)

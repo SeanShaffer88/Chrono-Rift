@@ -3,7 +3,7 @@
 [resource]
 script = ExtResource("1")
 weapon_id = "duskblade"
-display_name = "Duskblade"
+display_name = "Buster Sword"
 base_attack = 15
 current_durability = 60.0
 max_durability = 60.0

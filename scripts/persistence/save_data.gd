@@ -4,6 +4,7 @@ const Weapon = preload("res://data/weapons/weapon_data.gd")
 const Grid = preload("res://scenes/georama/town_grid.gd")
 const Roster = preload("res://data/characters/character_roster.gd")
 const TEMPLATES = {
+	"trail_sword": preload("res://data/weapons/trail_sword.tres"),
 	"battle_wrench": preload("res://data/weapons/battle_wrench.tres"),
 	"gladius": preload("res://data/weapons/gladius.tres"),
 	"duskblade": preload("res://data/weapons/duskblade.tres"),
@@ -23,10 +24,10 @@ static func unpack_vector(value: Array) -> Vector3:
 	return Vector3(value[0], value[1], value[2])
 
 static func actor(hero: Node3D) -> Dictionary:
-	return {"position": pack_vector(hero.position), "hp": hero.current_hp, "facing": pack_vector(hero.facing_direction), "yaw": hero.camera_pivot.rotation.y, "pitch": hero.camera_rig.preferred_pitch}
+	return {"position": pack_vector(hero.position), "hp": hero.current_hp, "facing": pack_vector(hero.facing_direction), "yaw": hero.camera_rig.get_preferred_yaw(), "pitch": hero.camera_rig.preferred_pitch}
 
 static func valid_actor(value: Variant) -> bool:
-	return value is Dictionary and vector(value.get("position")) and vector(value.get("facing"), 1.01) and number(value.get("hp"), 0, 100, true) and number(value.get("yaw"), -100000, 100000) and number(value.get("pitch"), -1.0, -0.2)
+	return value is Dictionary and vector(value.get("position")) and vector(value.get("facing"), 1.01) and number(value.get("hp"), 0, 100, true) and number(value.get("yaw"), -100000, 100000) and number(value.get("pitch"), deg_to_rad(-60.0)-0.000001, -0.2)
 
 static func capture(state: Node, dungeon: Node) -> Dictionary:
 	var inventories := {}

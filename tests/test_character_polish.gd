@@ -26,11 +26,18 @@ func run_assertions() -> void:
 			if is_equal_approx(center.y,-0.5): valid = valid and normals[index].y < -0.99
 		check(valid,"%s geometry has outward flat normals, a closed base and no collapsed apex triangles" % kind)
 	var weapon := preload("res://scripts/utilities/chain_weapon_visual.gd").make()
-	var blade: Mesh = weapon.get_node("CrescentBlade").mesh
+	var blade: Mesh = weapon.get_node("ForkedProngs").mesh
 	var faces := blade.get_faces()
-	var nondegenerate := faces.size() == (31*2+33*2)*3
-	for index in range(0,faces.size(),3): nondegenerate = nondegenerate and (faces[index+1]-faces[index]).cross(faces[index+2]-faces[index]).length_squared() > 0.00000001
-	check(nondegenerate,"Single crescent has a triangulated front/back and nondegenerate closed edges")
+	var nondegenerate := not faces.is_empty()
+	var left := false
+	var right := false
+	for index in range(0,faces.size(),3):
+		nondegenerate = nondegenerate and (faces[index+1]-faces[index]).cross(faces[index+2]-faces[index]).length_squared() > 0.00000001
+		for offset in 3:
+			left=left or faces[index+offset].x < 0
+			right=right or faces[index+offset].x > 0
+			nondegenerate=nondegenerate and absf(faces[index+offset].x)>0.07
+	check(nondegenerate and left and right,"Two red prongs remain finite closed geometry separated by an open gap")
 	weapon.free()
 	var holder := Node3D.new()
 	var bake := preload("res://scripts/utilities/art_mesh.gd").new()
@@ -86,7 +93,7 @@ func run_assertions() -> void:
 	check(visual.recoil == 0 and visual.phase == 0, "Character reset clears transient pose state")
 	state.swap_character("riftwarden")
 	var chain: Node3D = hero.get_node("Visual/WeaponPivot/Blade/ChainBlade")
-	check(chain.get_node("LinkedChain").multimesh.instance_count == 8, "Riftwarden keeps eight linked metal chain segments in one batch")
+	check(chain.has_node("ForkedProngs") and not chain.has_node("LinkedChain"), "Riftwarden keeps the compatibility root with forked red prongs and no chain")
 	check(visual.get_node("Mask").visible and not visual.get_node("HairTuft0").visible, "Riftwarden mask and hood replace the shared hair silhouette")
 	hero.queue_free()
 	await process_frame

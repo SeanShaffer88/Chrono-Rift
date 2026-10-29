@@ -34,7 +34,7 @@ func _run() -> void:
 			if cell.x*direction.x+cell.y*direction.y > best.x*direction.x+best.y*direction.y: best=cell
 		for yaw in [0.0,PI/2,PI,3*PI/2]:
 			hero.position = Vector3(best.x*2,0.15,best.y*2)
-			hero.camera_pivot.rotation.y = yaw
+			hero.camera_rig.restore_view(yaw,hero.camera_rig.preferred_pitch)
 			hero.camera_rig.snap()
 			for frame in 3: await process_frame
 			await RenderingServer.frame_post_draw

@@ -160,7 +160,7 @@ func run_assertions() -> void:
 	check(valid_route, "Navigation only uses adjacent walkable tiles")
 	check(factory.find_guard_path(start, Vector3(-100, 0, -100)).is_empty(), "Invalid navigation destination is rejected")
 	hero.position = Vector3.ZERO
-	hero.camera_pivot.rotation.y = 0
+	hero.camera_rig.restore_view(0,hero.camera_rig.preferred_pitch)
 	var focus := Node3D.new()
 	focus.position = Vector3(0, 0, -3)
 	root.add_child(focus)
@@ -173,7 +173,7 @@ func run_assertions() -> void:
 	check(is_equal_approx(hero.camera_pivot.rotation.y, manual_yaw), "Manual orbit takes priority over lock camera tracking")
 	hero._set_lock_target(null)
 	focus.free()
-	hero.camera_pivot.rotation.y = 0
+	hero.camera_rig.restore_view(0,hero.camera_rig.preferred_pitch)
 	hero.camera_rig.snap()
 	check(hero.spring_arm.shape is SphereShape3D and hero.camera.near <= 0.1, "Camera uses collision volume and short near plane")
 	barrier = wall(Vector3(0, 2, 3), Vector3(12, 8, 0.2))
@@ -199,11 +199,48 @@ func run_assertions() -> void:
 	await physics_frame
 	await physics_frame
 	hero.camera_rig.snap()
-	check(hero.spring_arm.rotation.x < deg_to_rad(-55) and hero.spring_arm.spring_length > 3.0, "Very close low wall raises camera to keep combat visible")
+	check(hero.spring_arm.rotation.x >= deg_to_rad(-60)-0.001 and hero.spring_arm.rotation.x <= deg_to_rad(-35)+0.001 and absf(hero.camera_rig.rescue_offset)>0.1 and hero.spring_arm.spring_length > 2.4, "Close wall uses a side escape while pitch stays within manual bounds")
+	check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),0.1),"Temporary side escape does not replace intended yaw")
 	barrier.free()
 	await physics_frame
 	for i in 150: hero.camera_rig.update(0.016)
 	check(absf(hero.spring_arm.rotation.x - hero.camera_rig.preferred_pitch) < 0.01, "Automatic camera rescue restores player's preferred tilt")
+	# A real two-wall corner blocks both the preferred rear view and one side.
+	barrier=wall(Vector3(0,1.4,1),Vector3(8,2.8,0.2))
+	var corner_side := wall(Vector3(1,1.4,0),Vector3(0.2,2.8,8))
+	await physics_frame
+	await physics_frame
+	hero.camera_rig.restore_view(0,deg_to_rad(-40))
+	check(hero.camera_rig.rescue_offset < -0.1 and hero.spring_arm.spring_length >= 2.4,"Perpendicular corner chooses the unobstructed side instead of overhead")
+	var intended_before: float = hero.camera_rig.get_preferred_yaw()
+	hero.camera_pivot.rotation.y=0 # Deliberately start interpolation in the blocked direction.
+	hero.camera_rig.distance=hero.camera_distance
+	hero.camera_rig.update(0.016)
+	check(hero.spring_arm.spring_length < 2.4,"Intermediate yaw retracts immediately even when its target side is clear")
+	var probe := SphereShape3D.new()
+	probe.radius=0.23
+	var camera_query := PhysicsShapeQueryParameters3D.new()
+	camera_query.shape=probe
+	camera_query.collision_mask=1
+	var clear_motion := true
+	for frame in 60:
+		hero.camera_rig.update(0.016)
+		var direction := (Basis(Vector3.UP,hero.camera_pivot.rotation.y)*Basis(Vector3.RIGHT,hero.spring_arm.rotation.x)).z
+		camera_query.transform=Transform3D(Basis.IDENTITY,hero.camera_pivot.global_position+direction*hero.spring_arm.spring_length)
+		clear_motion=clear_motion and hero.get_world_3d().direct_space_state.intersect_shape(camera_query,1).is_empty()
+	check(clear_motion,"Actual camera sphere stays outside both walls throughout interpolated side escape")
+	check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),intended_before),"Corner rescue retains intended yaw")
+	hero.camera_rig.snap()
+	check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),intended_before),"Teleport snap preserves intended view while re-solving rescue")
+	var actor_record := preload("res://scripts/persistence/save_data.gd").actor(hero)
+	check(is_equal_approx(float(actor_record.yaw),intended_before) and absf(hero.camera_pivot.rotation.y-intended_before)>0.1,"Saved yaw excludes the temporary rescue orientation")
+	barrier.free()
+	corner_side.free()
+	await physics_frame
+	for frame in 180: hero.camera_rig.update(0.016)
+	check(absf(angle_difference(hero.camera_pivot.rotation.y,intended_before))<0.001 and hero.spring_arm.spring_length>hero.camera_distance-0.01,"Opening the corner restores intended yaw and eases back to full distance")
+	hero.camera_rig.restore_view(0.7,deg_to_rad(-60))
+	check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),0.7) and preload("res://scripts/persistence/save_data.gd").valid_actor(preload("res://scripts/persistence/save_data.gd").actor(hero)),"Explicit loaded yaw and -60-degree pitch remain save-valid")
 	hero.camera_rig.touch_index = 7
 	hero._notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
 	check(hero.camera_rig.touch_index == -1, "Focus loss releases camera gesture ownership")

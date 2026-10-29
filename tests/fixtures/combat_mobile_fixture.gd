@@ -33,7 +33,7 @@ func _run() -> void:
 	guard.set_physics_process(false)
 	hero.set_physics_process(false)
 	hero.position = guard.position + Vector3(0, 0.1, 1.3)
-	hero.camera_pivot.rotation.y = 0
+	hero.camera_rig.restore_view(0,hero.camera_rig.preferred_pitch)
 	hero.camera_rig.snap()
 	guard.rotation.y = PI
 	guard.target = hero
@@ -91,7 +91,7 @@ func _check_restored_town(dungeon: Node) -> void:
 	var hero = town.get_node("MeleeHero")
 	hero.position = model.to_global(Vector3(0, 0.1, -5))
 	hero.face_direction(Vector3.BACK)
-	hero.camera_pivot.rotation.y = PI
+	hero.camera_rig.restore_view(PI,hero.camera_rig.preferred_pitch)
 	hero.camera_rig.snap()
 	print("COMBAT_QA CAPTURE: restored-town")
 	await get_tree().create_timer(2.0).timeout

@@ -1,7 +1,7 @@
 extends Node3D
 ## Original low-poly character art. Collision and combat stay on the parent.
 const Factory = preload("res://scripts/utilities/primitive_mesh_factory.gd")
-const Geometry = preload("res://scripts/utilities/hero_geometry.gd")
+const Geometry = preload("res://scripts/utilities/paper_geometry.gd")
 const Motion = preload("res://scripts/utilities/character_motion.gd")
 const Bake = preload("res://scripts/utilities/art_mesh.gd")
 var pose_parts: Array[Node3D] = []
@@ -13,14 +13,14 @@ var pose_roles: Array[int] = [] # 0 body, 1 left arm, 2 right arm, 3 cloth
 var pose_buffer: Dictionary = {}
 var legs: Array[Node3D] = []
 var phase := 0.0
-var variant_nodes: Dictionary = {"swordsman": [], "riftwarden": []}
+var variant_nodes: Dictionary = {"melee_hero": [], "swordsman": [], "riftwarden": []}
 
 func part(label: String, size: Vector3, at: Vector3, color: Color) -> MeshInstance3D:
 	var mesh := MeshInstance3D.new()
 	var kind := "head" if label == "Head" else "hair" if label == "Hair" else "taper" if label.begins_with("HairTuft") or label.begins_with("Fringe") else "torso" if label in ["Tunic","Belt","Scarf"] else "round"
 	mesh.mesh = Geometry.shape(kind)
 	mesh.scale = size
-	mesh.material_override = Factory.get_shared_material(color)
+	mesh.material_override = Geometry.material(color)
 	mesh.name = label
 	mesh.position = at
 	add_child(mesh)
@@ -31,7 +31,7 @@ func _ready() -> void:
 	$Body.hide()
 	$Face.hide()
 	owner_body = get_parent() as CharacterBody3D
-	var leather := Color("80502e")
+	var leather := Color("4b7941")
 	var skin := Color("edb47b")
 	part("Tunic", Vector3(0.65, 0.65, 0.4), Vector3(0, 0.95, 0), leather)
 	part("Belt", Vector3(0.69, 0.11, 0.44), Vector3(0, 0.7, 0), Color("392c2c"))
@@ -39,18 +39,18 @@ func _ready() -> void:
 	part("Head", Vector3(0.7, 0.62, 0.6), Vector3(0, 1.65, -0.02), skin)
 	part("Nose",Vector3(0.08,0.10,0.075),Vector3(0,1.62,-0.33),skin)
 	part("Mouth",Vector3(0.10,0.025,0.025),Vector3(0,1.51,-0.3),Color("805344"))
-	part("Hair", Vector3(0.84, 0.48, 0.75), Vector3(0, 1.91, 0.02), Color("493026"))
-	part("HairBack", Vector3(0.75, 0.42, 0.2), Vector3(0, 1.75, 0.3), Color("493026"))
+	part("Hair", Vector3(0.84, 0.48, 0.75), Vector3(0, 1.91, 0.02), Color("c8aa55"))
+	part("HairBack", Vector3(0.75, 0.42, 0.2), Vector3(0, 1.75, 0.3), Color("c8aa55"))
 	for index in 3:
-		var tuft := part("HairTuft%d" % index, Vector3(0.3, 0.16, 0.42), Vector3((index - 1) * 0.19, 2.035, 0.04), Color("593729"))
+		var tuft := part("HairTuft%d" % index, Vector3(0.3, 0.16, 0.42), Vector3((index - 1) * 0.19, 2.035, 0.04), Color("d8bf6e"))
 		tuft.rotation.z = (index - 1) * 0.45
 		tuft.rotation.x = -0.35
 	for side in [-1, 1]:
-		var fringe := part("Fringe%d" % side, Vector3(0.27, 0.21, 0.17), Vector3(side * 0.23, 1.89, -0.27), Color("593729"))
+		var fringe := part("Fringe%d" % side, Vector3(0.27, 0.21, 0.17), Vector3(side * 0.23, 1.89, -0.27), Color("d8bf6e"))
 		fringe.rotation.z = PI + side * 0.2
 		part("Eye%d" % side, Vector3(0.055, 0.09, 0.018), Vector3(side * 0.17, 1.65, -0.315), Color("242739"))
 		part("EyeWhite%d" % side,Vector3(0.095,0.10,0.018),Vector3(side*0.17,1.65,-0.305),Color("eee4d0"))
-		var brow := part("Brow%d" % side,Vector3(0.16,0.035,0.04),Vector3(side*0.17,1.76,-0.30),Color("493026"))
+		var brow := part("Brow%d" % side,Vector3(0.16,0.035,0.04),Vector3(side*0.17,1.76,-0.30),Color("c8aa55"))
 		brow.rotation.z = side*0.13
 		part("Sleeve%d" % side, Vector3(0.24, 0.3, 0.34), Vector3(side * 0.44, 1.12, 0), leather)
 		part("Hand%d" % side, Vector3(0.25, 0.3, 0.27), Vector3(side * 0.45, 0.83, -0.03), skin)
@@ -66,7 +66,7 @@ func _ready() -> void:
 		boot.name = "Boot"
 		boot.position = Vector3(0, -0.43, -0.06)
 		leg.add_child(boot)
-		var trouser := Factory.create_box(Vector3(0.25, 0.32, 0.29), Color("303d50"))
+		var trouser := Factory.create_box(Vector3(0.25, 0.32, 0.29), Color("bca67a"))
 		trouser.mesh = Geometry.shape("torso")
 		trouser.scale = Vector3(0.27,0.34,0.32)
 		trouser.name = "Trouser"
@@ -99,6 +99,24 @@ func _ready() -> void:
 	part("StrapBuckle",Vector3(0.14,0.13,0.055),Vector3(0.07,1.05,-0.25),Color("b79a61"))
 	for side in [-1,1]:
 		part("Knee%d" % side,Vector3(0.22,0.18,0.10),Vector3(side*0.19,0.43,-0.15),Color("54483b"))
+	var cap := part("PointedCap",Vector3.ONE,Vector3(0,1.98,0.13),Color("4b7941"))
+	_contour(cap,PackedVector2Array([Vector2(-0.43,-0.15),Vector2(0.43,-0.15),Vector2(0.35,0.13),Vector2(0.76,0.55),Vector2(0.04,0.35),Vector2(-0.37,0.15)]),Color("527f42"),Color("d8d3aa"))
+	cap.rotation.y=-0.15
+	variant_nodes.melee_hero.append(cap)
+	var shield := part("BackShield",Vector3.ONE,Vector3(0.04,1.02,0.36),Color("8f714a"))
+	var shield_bake := Bake.new()
+	shield_bake.cutout(PackedVector2Array([Vector2(-0.28,-0.1),Vector2(0,-0.36),Vector2(0.28,-0.1),Vector2(0.25,0.3),Vector2(-0.25,0.3)]),0.075,Transform3D.IDENTITY,Color("93734e"),Color("e1cfaa"))
+	shield_bake.cutout(PackedVector2Array([Vector2(-0.12,0.03),Vector2(0,-0.18),Vector2(0.14,0.03),Vector2(0,0.23)]),0.014,Transform3D(Basis.IDENTITY,Vector3(0,0,-0.05)),Color("4c9c8d"),Color("e5dcc5"))
+	# Rear mounting pad and leather straps bridge to the torso, purely cosmetic.
+	shield_bake.box(Vector3(0.16,0.18,0.14),Vector3(0,0,0.11),Color("5c4938"))
+	for side in [-1,1]:
+		shield_bake.beam(Vector3(side*0.15,-0.2,-0.047),Vector3(side*0.11,0.22,-0.047),0.035,Color("594737"))
+	var shield_mesh := shield_bake.finish(self,"ShieldBake")
+	shield.mesh=shield_mesh.mesh
+	shield.material_override=shield_mesh.material_override
+	shield_mesh.free()
+	shield.rotation=Vector3(0,PI,-0.28)
+	variant_nodes.melee_hero.append(shield)
 	# Replace hanging blocks with thick, original cut silhouettes.
 	_contour($ScarfTail,PackedVector2Array([Vector2(-0.15,0.28),Vector2(0.15,0.28),Vector2(0.22,-0.27),Vector2(0.04,-0.2),Vector2(-0.1,-0.34)]),Color("187d97"),Color("379db0"))
 	_contour($LongHair,PackedVector2Array([Vector2(-0.35,0.5),Vector2(0.35,0.5),Vector2(0.38,-0.45),Vector2(0.13,-0.33),Vector2(0,-0.55),Vector2(-0.2,-0.38),Vector2(-0.35,-0.46)]),Color("cbd0df"),Color("9ca5ba"))
@@ -119,7 +137,9 @@ func _ready() -> void:
 
 func _contour(node: MeshInstance3D, points: PackedVector2Array, color: Color, edge: Color) -> void:
 	var bake := Bake.new()
-	bake.cutout(points,0.075,Transform3D.IDENTITY,color,edge)
+	var normalized := PackedVector2Array(points)
+	if Geometry2D.is_polygon_clockwise(normalized): normalized.reverse()
+	bake.cutout(normalized,0.075,Transform3D.IDENTITY,color,edge)
 	if node.name == "LongHair":
 		for x in [-0.21,0,0.21]:
 			bake.beam(Vector3(x,0.44,0.045),Vector3(x+0.015,-0.38,0.045),0.018,Color("a2adc1"))
@@ -137,16 +157,16 @@ func apply_character(id: String) -> void:
 			node.visible = variant == id
 	for child: Node in get_children():
 		if child.name in ["Scarf", "ScarfTail"]:
-			child.visible = id == "melee_hero"
+			child.visible = false
 		if child is MeshInstance3D:
 			if str(child.name).begins_with("Eye") or child.name in ["Nose","Mouth"]: child.visible = not warden
 			if str(child.name).begins_with("Fringe") or str(child.name).begins_with("Brow"): child.visible = not warden
 			if child.name == "HairBack" or str(child.name).begins_with("HairTuft"): child.visible = false
 			var color: Variant = null
 			if str(child.name).begins_with("Hair") or str(child.name).begins_with("Fringe") or str(child.name).begins_with("Brow"):
-				color = Color("d5d8e4") if silver else (Color("252c3b") if warden else Color("493026"))
+				color = Color("d5d8e4") if silver else (Color("252c3b") if warden else Color("c8aa55"))
 			elif child.name == "Tunic" or str(child.name).begins_with("Sleeve"):
-				color = Color("282739") if silver else (Color("25303c") if warden else Color("80502e"))
+				color = Color("282739") if silver else (Color("25303c") if warden else Color("4b7941"))
 			elif str(child.name).begins_with("Hand"):
 				color = Color("25303c") if warden else Color("edb47b")
 			elif child.name == "Head" or str(child.name).begins_with("Ear"):
@@ -154,10 +174,10 @@ func apply_character(id: String) -> void:
 			elif str(child.name).begins_with("Bracer"):
 				color = Color("6c777b") if warden else Color("777c91") if silver else Color("64503b")
 			if color != null:
-				child.material_override = Factory.get_shared_material(color)
+				child.material_override = Geometry.material(color)
 	for leg: Node3D in legs:
-		leg.get_node("Boot").material_override = Factory.get_shared_material(Color("303641") if warden else Color("3b3645") if silver else Color("49342c"))
-		leg.get_node("Trouser").material_override = Factory.get_shared_material(Color("29313c") if warden else Color("34313f") if silver else Color("303d50"))
+		leg.get_node("Boot").material_override = Geometry.material(Color("303641") if warden else Color("3b3645") if silver else Color("49342c"))
+		leg.get_node("Trouser").material_override = Geometry.material(Color("29313c") if warden else Color("34313f") if silver else Color("bca67a"))
 	reset_motion()
 
 func reset_motion() -> void:
