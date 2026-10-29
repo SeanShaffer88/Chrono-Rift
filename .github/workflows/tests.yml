@@ -25,13 +25,19 @@ jobs:
 
       - name: Run tests
         run: |
+          set +e +o pipefail
           status=0
           for test in tests/test_*.gd; do
             [ "$test" = "tests/test_harness_template.gd" ] && continue
             echo "::group::$test"
-            if ! timeout 120 "$RUNNER_TEMP/godot" --headless --path . -s "$test"; then
-              echo "::error::$test failed"
+            if ! timeout 120 "$RUNNER_TEMP/godot" --headless --path . -s "$test" 2>&1 | tee test_output.log; then
               status=1
+            fi
+            if [ "${PIPESTATUS[0]}" != "0" ] || grep -qE "FAIL:|SCRIPT ERROR|Parse Error|ERROR:" test_output.log; then
+              status=1
+              # Surface errors as an annotation so they are readable without downloading logs.
+              summary=$(grep -E -A2 "FAIL:|SCRIPT ERROR|Parse Error|ERROR:" test_output.log | head -60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+              echo "::error title=$test failed::${summary}"
             fi
             echo "::endgroup::"
           done
