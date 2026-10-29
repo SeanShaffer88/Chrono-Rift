@@ -38,6 +38,8 @@ jobs:
               # Surface errors as an annotation so they are readable without downloading logs.
               summary=$(grep -E -A2 "FAIL:|SCRIPT ERROR|Parse Error|Test timed out" test_output.log | head -60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
               echo "::error title=$test failed (exit $code)::${summary}"
+            else
+              echo "::notice title=$test passed::$(grep -c 'PASS:' test_output.log) checks passed"
             fi
             echo "::endgroup::"
           done
