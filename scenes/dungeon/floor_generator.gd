@@ -6,6 +6,7 @@ const BSP := preload("res://scripts/utilities/bsp_tree.gd")
 const Factory := preload("res://scripts/utilities/primitive_mesh_factory.gd")
 const Orb := preload("res://scenes/dungeon/atla_sphere.gd")
 const Pickup := preload("res://scenes/dungeon/dungeon_pickup.gd")
+const Healing = preload("res://scenes/dungeon/healing_pickup.gd")
 const Dummy := preload("res://scenes/characters/training_dummy.gd")
 const Services := preload("res://scripts/utilities/services.gd")
 const CELL_SIZE := 2.0
@@ -142,6 +143,13 @@ func _build_content() -> void:
 		orb.name = "RestorationOrb%d" % index
 		orb.position = cell_to_world(orb_cells[index])
 		content.add_child(orb)
+	for room: Rect2i in layout.rooms.slice(0, 3):
+		var cell := room.get_center() + Vector2i.DOWN
+		if not layout.walkable.has(cell) or cell in [spawn_cell, key_cell, guard_cell, exit_cell] or orb_cells.has(cell):
+			continue
+		var healing := Healing.new()
+		healing.position = cell_to_world(cell)
+		content.add_child(healing)
 	for index in mini(4, layout.rooms.size()):
 		var torch := Factory.create_box(Vector3(0.18, 0.34, 0.18), Color(1, 0.55, 0.12), 1.5)
 		torch.position = cell_to_world(layout.rooms[index].position) + Vector3(0, 1.4, 0)

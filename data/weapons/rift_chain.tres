@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/weapons/weapon_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+weapon_id = "rift_chain"
+display_name = "Crescent Chain"
+base_attack = 15
+current_durability = 60.0
+max_durability = 60.0
+degradation_rate = 0.45
+destroy_on_break = false

@@ -12,9 +12,15 @@ func _ready() -> void:
 	add_child(floor_generator)
 	floor_generator.exit_reached.connect(_queue_next_floor)
 	_load_floor()
+	var companion := preload("res://scenes/dungeon/collector_companion.gd").new()
+	companion.hero = $MeleeHero
+	add_child(companion)
 	var hud := preload("res://scenes/ui/adventure_hud.gd").new()
 	hud.hero = $MeleeHero
 	$TouchUI.add_child(hud)
+	var characters := preload("res://scenes/ui/character_menu.gd").new()
+	characters.hero = $MeleeHero
+	$TouchUI.add_child(characters)
 	var button := Button.new()
 	button.text = "Town / Georama"
 	button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -35,9 +41,13 @@ func open_town() -> void:
 	_town_layer = CanvasLayer.new()
 	_town_layer.layer = 20
 	var container := SubViewportContainer.new()
+	# Keep forwarding native touches to pause-menu controls in the child viewport.
+	container.process_mode = Node.PROCESS_MODE_ALWAYS
 	container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	container.stretch = true
 	var viewport := SubViewport.new()
+	# World simulation still pauses; individual menu controls opt into ALWAYS.
+	viewport.process_mode = Node.PROCESS_MODE_PAUSABLE
 	viewport.own_world_3d = true
 	viewport.size = Vector2i(1280, 720)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS

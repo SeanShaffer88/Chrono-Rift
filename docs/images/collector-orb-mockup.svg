@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560">
+<rect width="1000" height="560" fill="#172737"/><path d="M0 360L1000 210V560H0" fill="#42515b"/>
+<g stroke="#596c79" stroke-width="2"><path d="M0 440L1000 290M0 520L1000 370M200 320L320 560M500 275L650 560M800 240L980 560"/></g>
+<g fill="#80502e"><rect x="440" y="240" width="90" height="115"/><rect x="455" y="355" width="25" height="80"/><rect x="495" y="355" width="25" height="80"/></g>
+<rect x="440" y="170" width="90" height="80" fill="#493026"/><path d="M435 250H535L510 275H440" fill="#1796b6"/>
+<defs><radialGradient id="halo"><stop stop-color="#d83850" stop-opacity=".55"/><stop offset="1" stop-color="#8a162f" stop-opacity="0"/></radialGradient></defs>
+<circle cx="595" cy="270" r="62" fill="url(#halo)"/><circle cx="595" cy="270" r="16" fill="#741c32" stroke="#df4560" stroke-width="2"/>
+<g fill="none" stroke="#e7556b" stroke-width="3"><path d="M567 265L578 252 580 263 594 244M609 282L620 273 616 265 626 256"/><ellipse cx="595" cy="270" rx="28" ry="11" transform="rotate(-30 595 270)"/></g>
+<circle cx="750" cy="335" r="18" fill="#35c9e3"/><path d="M725 330Q670 295 620 275" fill="none" stroke="#b3cfda" stroke-dasharray="6 6"/>
+<g fill="#edf3f4" font-family="sans-serif"><text x="40" y="60" font-size="28">Dungeon companion — visual mockup</text><text x="635" y="210" font-size="20">Small dark red electrical orb</text><text x="40" y="490" font-size="18">Follows every character · Nearby collection requires a clear path</text><text x="40" y="525" font-size="18">Collect town parts + unlocked keys · Leave healing pickups at full HP · Never activate exits</text></g></svg>
