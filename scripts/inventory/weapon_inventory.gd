@@ -103,6 +103,16 @@ func reset(with_starter: bool = true, starter_template: Resource = null) -> void
 	_emit_equipped()
 	inventory_changed.emit()
 
+func restore_weapons(weapons: Array[Weapon], equipped_index: int) -> void:
+	for weapon in _weapons:
+		_disconnect_weapon(weapon)
+	_weapons.assign(weapons)
+	for weapon in _weapons:
+		_connect_weapon(weapon)
+	_equipped = _weapons[equipped_index] if equipped_index >= 0 else null
+	_emit_equipped()
+	inventory_changed.emit()
+
 func _on_broken(weapon: Resource) -> void:
 	if weapon.destroy_on_break:
 		remove_weapon(weapon)

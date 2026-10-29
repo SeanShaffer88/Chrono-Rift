@@ -15,6 +15,11 @@ An Android action-RPG with a recovered-parts town-restoration puzzle, targeting 
 Open the folder in Godot 4.7.2 and press Play to explore a procedural dungeon.
 `scenes/main.tscn` remains the test arena with two training dummies.
 
+The main game automatically saves one local profile with a validated backup.
+It resumes the saved dungeon/town position and HP, weapons, collected items and
+town restoration. See [`docs/SAVE_SYSTEM.md`](docs/SAVE_SYSTEM.md) for recovery,
+timing and storage details. The training arena and automated fixtures are isolated.
+
 | Action  | Touch                   | Keyboard     |
 |---------|-------------------------|--------------|
 | Move    | Left side of the screen | WASD / arrows |

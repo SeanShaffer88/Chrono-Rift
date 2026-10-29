@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+<rect width="1280" height="720" fill="#26343c"/>
+<path d="M0 270H1280V720H0Z" fill="#73533d"/><path d="M0 270L150 190H1130L1280 270" fill="#46515b"/>
+<g font-family="Segoe UI, sans-serif" fill="#edf4f2">
+<rect x="24" y="20" width="260" height="22" fill="#d94d53"/><rect x="24" y="46" width="260" height="22" fill="#e3ae4b"/>
+<text x="24" y="91" font-size="16">HP 100 / 100   WHP 60 / 60</text>
+<rect x="20" y="99" width="290" height="34" rx="5" fill="#142432" opacity=".9"/>
+<text x="28" y="122" font-size="16" fill="#b8d8c7">Autosave ready</text>
+<rect x="1010" y="16" width="250" height="48" fill="#17252d"/><text x="1040" y="47" font-size="18">Town / Georama</text>
+<text x="400" y="335" font-size="26">SAVE STATUS — HUD MOCKUP</text>
+<text x="400" y="375" font-size="18">One small read-only line beneath existing status bars.</text>
+<text x="400" y="410" font-size="18">Autosave ready  ·  Saving…  ·  Saved</text>
+<text x="400" y="445" font-size="18" fill="#edd19e">Recovered backup save</text>
+<text x="400" y="480" font-size="18" fill="#f2b4a6">Save unavailable — progress not saved</text>
+<text x="400" y="520" font-size="16">No new buttons or changes to the touch controls.</text>
+<text x="24" y="690" font-size="14" fill="#d5c6ab">Layout concept only — not a game screenshot</text>
+</g></svg>
