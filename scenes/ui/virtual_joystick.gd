@@ -2,6 +2,7 @@ extends Control
 ## Floating multi-touch thumbstick. A touch in the left part of the screen spawns the
 ## stick under the finger; releasing returns it to a rest anchor relative to the viewport.
 
+const Layout=preload("res://scripts/utilities/menu_layout.gd")
 signal joystick_moved(value: Vector2)
 signal joystick_released
 
@@ -34,7 +35,8 @@ func is_active() -> bool:
 	return _touch_index != -1
 
 func get_rest_position() -> Vector2:
-	return get_viewport_rect().size * rest_anchor
+	var safe := Layout.safe_rect(get_viewport())
+	return (safe.position+safe.size*rest_anchor).clamp(safe.position+Vector2.ONE*radius,safe.end-Vector2.ONE*radius)
 
 ## Maps a finger offset from the stick centre to a stick vector, rescaling past the deadzone.
 static func compute_vector(offset: Vector2, stick_radius: float, dead: float) -> Vector2:
@@ -61,7 +63,8 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
 		if not is_visible_in_tree() or _touch_index != -1 or not _in_touch_zone(event.position):
 			return
 		_touch_index = event.index
-		_base_pos = event.position
+		var safe := Layout.safe_rect(get_viewport())
+		_base_pos = event.position.clamp(safe.position+Vector2.ONE*radius,safe.end-Vector2.ONE*radius)
 		_update_knob(event.position)
 		_accept_event()
 	elif event.index == _touch_index:
@@ -86,12 +89,14 @@ func _handle_drag(event: InputEventScreenDrag) -> void:
 	_accept_event()
 
 func _update_knob(touch_pos: Vector2) -> void:
+	var safe := Layout.safe_rect(get_viewport())
+	touch_pos=touch_pos.clamp(safe.position,safe.end)
 	var offset := touch_pos - _base_pos
 	# Floating stick: drag the base along when the finger leaves the ring.
 	if offset.length() > radius:
-		_base_pos = touch_pos - offset.normalized() * radius
-		offset = touch_pos - _base_pos
-	_knob_pos = _base_pos + offset
+		_base_pos = (touch_pos-offset.normalized()*radius).clamp(safe.position+Vector2.ONE*radius,safe.end-Vector2.ONE*radius)
+		offset = (touch_pos-_base_pos).limit_length(radius)
+	_knob_pos = (_base_pos+offset).clamp(safe.position+Vector2.ONE*knob_radius,safe.end-Vector2.ONE*knob_radius)
 	_set_value(compute_vector(offset, radius, deadzone))
 	queue_redraw()
 
@@ -108,15 +113,16 @@ func _reset_to_rest() -> void:
 	queue_redraw()
 
 func _in_touch_zone(pos: Vector2) -> bool:
-	return pos.x <= get_viewport_rect().size.x * touch_zone_width
+	var safe := Layout.safe_rect(get_viewport())
+	return safe.has_point(pos) and pos.x<=safe.position.x+safe.size.x*touch_zone_width
 
 func _accept_event() -> void:
 	if is_inside_tree():
 		get_viewport().set_input_as_handled()
 
 func _on_viewport_size_changed() -> void:
-	if not is_active():
-		_reset_to_rest()
+	if is_active(): _release()
+	else: _reset_to_rest()
 
 func _draw() -> void:
 	var origin := get_global_position()

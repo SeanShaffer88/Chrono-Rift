@@ -1,5 +1,6 @@
 extends VBoxContainer
 ## Small readable status display, ignores touches intended for movement.
+const Layout=preload("res://scripts/utilities/menu_layout.gd")
 const Services = preload("res://scripts/utilities/services.gd")
 var hero: CharacterBody3D
 var hp := ProgressBar.new()
@@ -26,6 +27,8 @@ func _ready() -> void:
 	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	caption.add_theme_font_size_override("font_size", 16)
 	add_child(caption)
+	get_viewport().size_changed.connect(_layout_hud)
+	_layout_hud.call_deferred()
 
 func _process(_delta: float) -> void:
 	if not is_instance_valid(hero):
@@ -37,3 +40,11 @@ func _process(_delta: float) -> void:
 	whp.max_value = weapon.max_durability if weapon else 1.0
 	whp.value = weapon.current_durability if weapon else 0.0
 	caption.text = ("HP %d / %d   WHP %d / %d" % [hp.value, hp.max_value, whp.value, whp.max_value]) if whp.visible else ("HP %d / %d" % [hp.value,hp.max_value])
+
+func _layout_hud() -> void:
+	var safe := Layout.safe_rect(get_viewport())
+	var m := Layout.metrics(get_viewport())
+	position=safe.position
+	var width := maxf(260,ThemeDB.fallback_font.get_string_size("HP 100 / 100   WHP 100 / 100",HORIZONTAL_ALIGNMENT_LEFT,-1,m.body).x)
+	for bar in [hp,whp]: bar.custom_minimum_size.x=width
+	caption.add_theme_font_size_override("font_size",m.body)

@@ -5,6 +5,7 @@ enum Mode { DUNGEON, GEORAMA }
 
 signal mode_changed(new_mode: Mode)
 signal thirst_depleted
+signal character_unlocked(id: String)
 
 const MAX_THIRST := 100.0
 
@@ -45,7 +46,9 @@ func is_character_available(id: String) -> bool:
 	return Roster.HEROES.has(id) and (id != "devourer" or secret_unlocked)
 
 func record_floor_clear(floor_number: int) -> void:
-	if floor_number >= 6: secret_unlocked = true
+	if floor_number>=6 and not secret_unlocked:
+		secret_unlocked=true
+		character_unlocked.emit("devourer")
 
 func has_collected_orb(orb_id: String) -> bool:
 	return collected_orb_ids.has(orb_id)

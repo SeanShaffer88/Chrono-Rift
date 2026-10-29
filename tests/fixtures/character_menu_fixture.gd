@@ -15,7 +15,7 @@ func run() -> void:
 	menu.hero=hero
 	layer.add_child(menu)
 	menu.open_menu()
-	for size: Vector2i in [Vector2i(1280,720),Vector2i(390,700)]:
+	for size: Vector2i in [Vector2i(1280,720),Vector2i(1600,720)]:
 		viewport.size=size
 		for frame in 5: await process_frame
 		await RenderingServer.frame_post_draw
@@ -25,10 +25,10 @@ func run() -> void:
 			push_error("Close button exceeds viewport: "+str(rect))
 			quit(1)
 			return
-		if menu.card_grid.columns != (2 if size.x>=680 else 1):
+		if menu.card_grid.columns != (3 if size.x>=1472 else 2):
 			quit(1)
 			return
-		viewport.get_texture().get_image().save_png("res://../outputs/Battlemage-menu-%d.png"%size.x)
+		viewport.get_texture().get_image().save_png("res://../outputs/Characters-landscape-%d.png"%size.x)
 		print("PASS responsive menu ",size," close ",rect)
 	var state=root.get_node("GameState")
 	menu.close_menu()

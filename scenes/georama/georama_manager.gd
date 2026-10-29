@@ -1,6 +1,9 @@
 extends Node3D
 
 signal closed
+const Layout=preload("res://scripts/utilities/menu_layout.gd")
+const Rows=preload("res://scenes/ui/paged_rows.gd")
+const TextPages=preload("res://scenes/ui/paged_text.gd")
 const Grid := preload("res://scenes/georama/town_grid.gd")
 const Visuals := preload("res://scenes/georama/town_visuals.gd")
 const Services := preload("res://scripts/utilities/services.gd")
@@ -26,12 +29,32 @@ var _residents: Dictionary = {}
 var _ui: CanvasLayer
 var _menu: PanelContainer
 var _assembly: PanelContainer
-var _foundations: ItemList
-var _components: ItemList
-var _slots: OptionButton
+var _foundations: Rows
+var _components: Rows
+var _slot_keys: Array[String]=[]
+var _slot_index := 0
+var _slot_label := Label.new()
+var _slot_previous := Button.new()
+var _slot_next := Button.new()
+var _columns: HBoxContainer
+var _left: VBoxContainer
+var _middle: VBoxContainer
+var _right: VBoxContainer
+var _top: VBoxContainer
+var _dialog_heading := Label.new()
+var _dialog_back: Button
+var _compact := false
+var _slot_row: HBoxContainer
+var _attach_button: Button
+var _detach_button: Button
+var _arrange_button: Button
+var _remove_button: Button
+var _assembly_target := Vector2.ZERO
+var _town_buttons: Array[Button]=[]
+var _headings: Array[Label]=[]
 var _status: Label
 var _dialog: PanelContainer
-var _dialog_text: Label
+var _dialog_text: TextPages
 var _joystick: Control
 var _edit_button: Button
 var _talk_button: Button
@@ -88,134 +111,208 @@ func _button(parent: Node, text: String, action: Callable) -> Button:
 	button.add_theme_font_size_override("font_size", 18)
 	button.pressed.connect(action)
 	parent.add_child(button)
+	_town_buttons.append(button)
 	return button
 
 func _build_ui() -> void:
-	_ui = CanvasLayer.new()
+	_ui=CanvasLayer.new()
 	add_child(_ui)
-	_menu = _panel(Vector2(16, 16), Vector2(235, 205))
+	_menu=_panel(Vector2.ZERO,Vector2.ZERO)
 	var commands := VBoxContainer.new()
 	_menu.add_child(commands)
-	_button(commands, "Config / Assembly", show_page.bind("assembly"))
-	_button(commands, "Move / Remove", show_page.bind("move"))
-	_button(commands, "Georama Analysis", show_analysis)
-	_button(commands, "Walking Mode", set_editing.bind(false))
-	_assembly = _panel(Vector2(16, 235), Vector2(900, 330))
-	var columns := HBoxContainer.new()
-	_assembly.add_child(columns)
-	var left := VBoxContainer.new()
-	left.custom_minimum_size.x = 275
-	columns.add_child(left)
+	_button(commands,"Config / Assembly",show_page.bind("assembly"))
+	_button(commands,"Move / Remove",show_page.bind("move"))
+	_button(commands,"Georama Analysis",show_analysis)
+	_button(commands,"Walking Mode",set_editing.bind(false))
+	_assembly=_panel(Vector2.ZERO,Vector2.ZERO)
+	_columns=HBoxContainer.new()
+	_assembly.add_child(_columns)
+	_left=VBoxContainer.new()
+	_columns.add_child(_left)
 	var label := Label.new()
-	label.text = "Foundation Parts"
-	left.add_child(label)
-	_foundations = ItemList.new()
-	_foundations.custom_minimum_size = Vector2(270, 240)
-	_foundations.item_selected.connect(_select_foundation)
-	left.add_child(_foundations)
-	var middle := VBoxContainer.new()
-	middle.custom_minimum_size.x = 275
-	columns.add_child(middle)
-	_slots = OptionButton.new()
-	middle.add_child(_slots)
-	_button(middle, "Attach specific part", attach_selected)
-	_button(middle, "Remove specific part", detach_selected)
-	_button(middle, "Arrange foundation", begin_selected)
-	_button(middle, "Return to parts", remove_selected)
-	var right := VBoxContainer.new()
-	columns.add_child(right)
-	label = Label.new()
-	label.text = "Specific Parts"
-	right.add_child(label)
-	_components = ItemList.new()
-	_components.custom_minimum_size = Vector2(275, 240)
-	right.add_child(_components)
-	var bar := HBoxContainer.new()
-	_camera_bar = bar
-	bar.position = Vector2(16, 650)
-	_ui.add_child(bar)
-	_confirm = _button(bar, "Confirm", confirm_placement)
-	_rotate = _button(bar, "Rotate", rotate_pending)
-	_cancel = _button(bar, "Back", cancel_placement)
-	_button(bar, "View left", orbit.bind(-15.0))
-	_button(bar, "View right", orbit.bind(15.0))
-	_button(bar, "Tilt up", tilt.bind(10.0))
-	_button(bar, "Tilt down", tilt.bind(-10.0))
-	_status = Label.new()
-	_status.position = Vector2(20, 595)
-	_status.size = Vector2(950, 50)
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text="Foundation Parts"
+	_left.add_child(label)
+	_headings.append(label)
+	_foundations=Rows.new()
+	_foundations.id_selected.connect(_select_foundation_id)
+	_left.add_child(_foundations)
+	_middle=VBoxContainer.new()
+	_columns.add_child(_middle)
+	var slots := HBoxContainer.new()
+	_slot_row=slots
+	_slot_previous.text="<"
+	_slot_next.text=">"
+	_slot_previous.pressed.connect(_change_slot.bind(-1))
+	_slot_next.pressed.connect(_change_slot.bind(1))
+	slots.add_child(_slot_previous)
+	slots.add_child(_slot_label)
+	slots.add_child(_slot_next)
+	_slot_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	_slot_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	_slot_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	_middle.add_child(slots)
+	_attach_button=_button(_middle,"Attach specific part",attach_selected)
+	_detach_button=_button(_middle,"Remove specific part",detach_selected)
+	_arrange_button=_button(_middle,"Arrange foundation",begin_selected)
+	_remove_button=_button(_middle,"Return to parts",remove_selected)
+	_right=VBoxContainer.new()
+	_columns.add_child(_right)
+	label=Label.new()
+	label.text="Specific Parts"
+	_right.add_child(label)
+	_headings.append(label)
+	_components=Rows.new()
+	_right.add_child(_components)
+	_camera_bar=HBoxContainer.new()
+	_ui.add_child(_camera_bar)
+	_confirm=_button(_camera_bar,"Confirm",confirm_placement)
+	_rotate=_button(_camera_bar,"Rotate",rotate_pending)
+	_cancel=_button(_camera_bar,"Back",_back)
+	_button(_camera_bar,"View left",orbit.bind(-15.0))
+	_button(_camera_bar,"View right",orbit.bind(15.0))
+	_button(_camera_bar,"Tilt up",tilt.bind(10.0))
+	_button(_camera_bar,"Tilt down",tilt.bind(-10.0))
+	_status=Label.new()
+	_status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	_status.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	_ui.add_child(_status)
-	var top := VBoxContainer.new()
-	top.position = Vector2(990, 16)
-	_ui.add_child(top)
-	_edit_button = _button(top, "Georama", set_editing.bind(true))
-	_button(top, "Return to dungeon", request_close)
-	_talk_button = _button(top, "Talk / Inspect", talk_nearest)
-	_joystick = load("res://scenes/ui/virtual_joystick.tscn").instantiate()
+	_top=VBoxContainer.new()
+	_ui.add_child(_top)
+	_edit_button=_button(_top,"Georama",set_editing.bind(true))
+	_button(_top,"Return to dungeon",request_close)
+	_talk_button=_button(_top,"Talk / Inspect",talk_nearest)
+	_joystick=load("res://scenes/ui/virtual_joystick.tscn").instantiate()
 	_ui.add_child(_joystick)
-	_dialog = _panel(Vector2(290, 150), Vector2(700, 380))
+	_dialog=_panel(Vector2.ZERO,Vector2.ZERO)
 	var dialogue := VBoxContainer.new()
 	_dialog.add_child(dialogue)
-	_dialog_text = Label.new()
-	_dialog_text.custom_minimum_size = Vector2(660, 270)
-	_dialog_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_dialog_heading.text="Town"
+	dialogue.add_child(_dialog_heading)
+	_dialog_text=TextPages.new()
+	_dialog_text.size_flags_vertical=Control.SIZE_EXPAND_FILL
 	dialogue.add_child(_dialog_text)
-	_button(dialogue, "Back", _dialog.hide)
+	_dialog_back=_button(dialogue,"Back",_close_dialog)
 	_dialog.hide()
+	get_viewport().size_changed.connect(_layout_ui)
+	_layout_ui.call_deferred()
+
+func _layout_ui() -> void:
+	if _ui==null or _dialog_text==null: return
+	var safe := Layout.safe_rect(get_viewport())
+	var m := Layout.metrics(get_viewport())
+	_joystick.visible=not editing and not _dialog.visible
+	for control: Button in _town_buttons: Layout.button(control,m,control in [_confirm,_dialog_back])
+	for control: Button in [_slot_previous,_slot_next]: Layout.button(control,m)
+	for control: Label in _headings+[_status,_slot_label]: control.add_theme_font_size_override("font_size",m.body)
+	_dialog_heading.add_theme_font_size_override("font_size",maxi(24,m.body+4))
+	_camera_bar.add_theme_constant_override("separation",int(m.gap))
+	_camera_bar.position=Vector2(safe.position.x,safe.end.y-m.primary)
+	_camera_bar.size=Vector2(safe.size.x,m.primary)
+	var status_height: float=maxf(m.touch,Layout.text_height(_status.text,safe.size.x,m.body))
+	_status.position=Vector2(safe.position.x,_camera_bar.position.y-m.gap-status_height)
+	_status.size=Vector2(safe.size.x,status_height)
+	var menu_height: float=4*m.touch+3*4+20
+	var assembly_min: float=5*m.touch+4*m.gap+20
+	_compact=safe.position.y+menu_height+12+assembly_min>_status.position.y-m.gap
+	_slot_row.visible=not _compact or page=="assembly"
+	_attach_button.visible=not _compact or page=="assembly"
+	_detach_button.visible=not _compact or page=="assembly"
+	_arrange_button.visible=not _compact or page=="move"
+	_remove_button.visible=not _compact or page=="move"
+	var assembly_size := Vector2.ZERO
+	if _compact:
+		_menu.visible=editing and not _assembly.visible and pending_id.is_empty()
+		_assembly.position=safe.position
+		assembly_size=Vector2(safe.size.x,maxf(1,_status.position.y-m.gap-safe.position.y))
+	else:
+		_menu.visible=editing
+		_assembly.position=safe.position+Vector2(0,menu_height+12)
+		assembly_size=Vector2(minf(980,safe.size.x),minf(330,_status.position.y-m.gap-_assembly.position.y))
+	_assembly_target=assembly_size
+	_assembly.size=assembly_size
+	_settle_assembly.call_deferred()
+	_menu.position=safe.position
+	_menu.size=Vector2(maxf(235,m.touch*3.2),menu_height)
+	_top.visible=not (_compact and editing and _assembly.visible)
+	_top.position=Vector2(safe.end.x-maxf(250,m.touch*3.4),safe.position.y)
+	_top.size.x=maxf(250,m.touch*3.4)
+	for child: Node in _ui.get_children():
+		if child.get_script()==preload("res://scenes/ui/character_menu.gd"):
+			child.launch.visible=not child.opened and not _dialog.visible and not (_compact and editing and _assembly.visible)
+	var width: float=(assembly_size.x-24-2*m.gap)/3
+	_columns.add_theme_constant_override("separation",int(m.gap))
+	for column in [_left,_middle,_right]:
+		column.custom_minimum_size.x=width
+		column.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		column.add_theme_constant_override("separation",int(m.gap))
+	var list_height: float=assembly_size.y-20-ThemeDB.fallback_font.get_height(m.body)-m.gap
+	_foundations.configure(Vector2(width,list_height),m)
+	_components.configure(Vector2(width,list_height),m)
+	var dialog_size := Vector2(minf(980,safe.size.x),minf(580,safe.size.y))
+	_dialog.position=safe.get_center()-dialog_size/2
+	_dialog.size=dialog_size
+	_dialog_text.configure(Vector2(dialog_size.x-24,dialog_size.y-20-ThemeDB.fallback_font.get_height(maxi(24,m.body+4))-m.primary-2*m.gap),m)
+
+func _settle_assembly() -> void:
+	_assembly.size=_assembly_target
+func _close_dialog() -> void:
+	_dialog.hide()
+	_layout_ui()
+
+func _back() -> void:
+	cancel_placement()
+	_assembly.hide()
+	_layout_ui()
 
 func _refresh() -> void:
 	_dressing.cover(grid)
 	_render_town()
-	_foundations.clear()
 	foundation_ids.clear()
+	var foundations: Array[Dictionary]=[]
 	for id: String in grid.state.town_objects:
-		var record: Dictionary = grid.state.town_objects[id]
-		if page == "move" and not record.placed:
-			continue
+		var record: Dictionary=grid.state.town_objects[id]
 		foundation_ids.append(id)
 		var event := "  Event" if grid.resident_active(id) and not record.event_seen else ""
-		_foundations.add_item(grid.catalog[record.piece_id].display_name + (" [placed]" if record.placed else "") + event)
-		if id == selected_id:
-			_foundations.select(foundation_ids.size() - 1)
-	_components.clear()
-	component_ids = grid.available_components()
-	for id in component_ids:
-		_components.add_item(str(grid.state.collected_orb_ids[id]).replace("_", " ").capitalize())
+		foundations.append({"id":id,"label":grid.catalog[record.piece_id].display_name+(" [placed]" if record.placed else "")+event})
+	_foundations.set_entries(foundations,selected_id)
+	component_ids=grid.available_components()
+	var components: Array[Dictionary]=[]
+	for id: String in component_ids: components.append({"id":id,"label":str(grid.state.collected_orb_ids[id]).replace("_"," ").capitalize()})
+	_components.set_entries(components,_components.selected_id)
 	_refresh_slots()
-	_status.text = "Recover foundation and specific parts in the dungeon." if foundation_ids.is_empty() else "Select a foundation. Assemble its recovered parts or arrange it in the world."
+	_status.text="Recover foundation and specific parts in the dungeon." if foundation_ids.is_empty() else "Select a foundation. Assemble recovered parts or arrange it in the world."
+	_layout_ui()
 
 func _refresh_slots() -> void:
-	_slots.clear()
-	if not grid.state.town_objects.has(selected_id):
-		return
-	var record: Dictionary = grid.state.town_objects[selected_id]
-	for slot: String in grid.catalog[record.piece_id].slots:
-		_slots.add_item(slot + (": fitted" if record.components.has(slot) else ": ?"))
-	if _slots.item_count > 0:
-		_slots.select(0)
-
+	_remove_button.disabled=not grid.state.town_objects.has(selected_id) or not grid.state.town_objects[selected_id].placed
+	_slot_keys.clear()
+	if grid.state.town_objects.has(selected_id):
+		_slot_keys.assign(grid.catalog[grid.state.town_objects[selected_id].piece_id].slots.keys())
+	_slot_index=clampi(_slot_index,0,maxi(0,_slot_keys.size()-1))
+	_change_slot(0)
+func _change_slot(delta: int) -> void:
+	_slot_index=clampi(_slot_index+delta,0,maxi(0,_slot_keys.size()-1))
+	_slot_previous.disabled=_slot_index==0
+	_slot_next.disabled=_slot_index>=_slot_keys.size()-1
+	_slot_label.text="No slots"
+	if not _slot_keys.is_empty():
+		var slot: String=_slot_keys[_slot_index]
+		_slot_label.text=slot+(": fitted" if grid.state.town_objects[selected_id].components.has(slot) else ": ?")
 func _select_foundation(index: int) -> void:
-	selected_id = foundation_ids[index]
+	if index>=0 and index<foundation_ids.size(): _select_foundation_id(foundation_ids[index])
+func _select_foundation_id(id: String) -> void:
+	selected_id=id
+	_slot_index=0
 	_refresh_slots()
-	if page == "move":
-		begin_selected()
-
+	if page=="move": begin_selected()
 func attach_selected() -> void:
-	var selection := _components.get_selected_items()
-	if _slots.selected < 0 or selection.is_empty() or not grid.state.town_objects.has(selected_id):
-		_status.text = "Select a foundation slot and a specific part."
+	if _slot_keys.is_empty() or _components.selected_id.is_empty() or not grid.state.town_objects.has(selected_id):
+		_status.text="Select a foundation slot and a specific part."
 		return
-	var record: Dictionary = grid.state.town_objects[selected_id]
-	var slot: String = grid.catalog[record.piece_id].slots.keys()[_slots.selected]
-	_status.text = "Part fitted." if grid.assemble(selected_id, slot, component_ids[selection[0]]) else "That part does not fit, or this structure is complete."
-
+	_status.text="Part fitted." if grid.assemble(selected_id,_slot_keys[_slot_index],_components.selected_id) else "That part does not fit, or this structure is complete."
 func detach_selected() -> void:
-	if _slots.selected < 0 or not grid.state.town_objects.has(selected_id):
-		return
-	var slot: String = grid.catalog[grid.state.town_objects[selected_id].piece_id].slots.keys()[_slots.selected]
-	_status.text = "Part returned." if grid.detach_component(selected_id, slot) else "Completed structures cannot be disassembled."
+	if _slot_keys.is_empty() or not grid.state.town_objects.has(selected_id): return
+	_status.text="Part returned." if grid.detach_component(selected_id,_slot_keys[_slot_index]) else "Completed structures cannot be disassembled."
 
 func show_page(value: String) -> void:
 	set_editing(true)
@@ -332,6 +429,7 @@ func set_editing(value: bool) -> void:
 	_confirm.visible = value
 	_rotate.visible = value
 	_cancel.visible = value
+	_layout_ui()
 	$MeleeHero.process_mode = Node.PROCESS_MODE_DISABLED if value else Node.PROCESS_MODE_INHERIT
 	if value:
 		$CameraPivot/Camera3D.make_current()
@@ -348,6 +446,10 @@ func talk_nearest() -> void:
 			nearest = id
 	_dialog_text.text = grid.talk(nearest) if not nearest.is_empty() else "Walk closer to a restored resident to talk."
 	_dialog.show()
+	touches.clear()
+	gesture=false
+	if _joystick.has_method("_release"): _joystick._release()
+	_layout_ui()
 
 func show_analysis() -> void:
 	var progress := grid.analysis()
@@ -364,6 +466,10 @@ func show_analysis() -> void:
 			else:
 				_dialog_text.text += ": ? Speak to the resident."
 	_dialog.show()
+	touches.clear()
+	gesture=false
+	if _joystick.has_method("_release"): _joystick._release()
+	_layout_ui()
 
 func _process(_delta: float) -> void:
 	if not editing:
@@ -412,7 +518,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not editing:
+	if not editing or _dialog.visible:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
