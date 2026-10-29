@@ -1,0 +1,9 @@
+# Dungeon surface polish
+
+`images/surface-polish-concept.png` is the approved direction; `surface-polish-prompt.txt` preserves the exact generation prompt. This pass changes only broad solid backing tops and visible grout gaps.
+
+`environment_art.gd` retains merged opaque backing boxes but lowers their roof to2.25. A single baked opaque slate surface spans nonwalkable cells only. Shared grid corners derive deterministic heights from seed and coordinates, so neighboring caps meet exactly. Every nonwalkable cell with an eight-neighbor walkable cell is a flat2.72 boundary plateau, including its shared corners, preserving the old mask over imported wall-back strips. Other off-center peaks remain at or below2.70. Interior corners2.30–2.60 create downward relief. Every cap vertex stays below the previous2.72 backing roof, so the pass adds no occupied space above the original camera envelope. Existing steep-corner occlusion is not claimed fixed. Vertical skirts close exposed boundaries to the underfill. The cap has four top triangles and at most eight skirt triangles per cell, one surface, no new collision/navigation/runtime animation/shadows or per-cell nodes.
+
+A plain warm-earth grout surface atY0.040 covers the patterned imported floor visible between slabs. Source accents top out at0.036; slab tops remain0.0475. Existing slab dimensions/colors and global anti-aliasing are retained. Inspector: none added; tune GROUT_TOP/BACKING_ROOF and cap height ranges only with the strict separation and boundary-clearance tests retained.
+
+Tests cover seed stability, finite points, upward cap triangles, exact backing coverage, shared corner heights, nonwalkable footprints, bounded vertices, strict floor/grout/slab separation and unchanged collision ownership. Native/Android matched corner and corridor captures plus a short stepped camera sequence verify visual behavior. Physical-phone performance is unmeasured.

@@ -17,6 +17,31 @@ func run_assertions() -> void:
 				valid_backing = valid_backing and not cells.has(cell) and not coverage.has(cell)
 				coverage[cell] = true
 	check(valid_backing and coverage.size() == 8*9-cells.size(),"Solid backing exactly covers expanded asymmetric bounds without walkable cells or overlap")
+	var patches := Art.rock_cap_layout(cells,1337)
+	check(patches == Art.rock_cap_layout(cells,1337) and patches != Art.rock_cap_layout(cells,1338),"Slate cap is seed-stable and varies across seeds")
+	var plateau := true
+	var corners := {}
+	var valid_cap := true
+	for patch: Dictionary in patches:
+		valid_cap = valid_cap and not cells.has(patch.cell)
+		var points: PackedVector3Array = patch.corners
+		if Art.rock_boundary_cell(patch.cell,cells):
+			plateau=plateau and is_equal_approx(patch.peak.y,2.72)
+			for point: Vector3 in points: plateau=plateau and is_equal_approx(point.y,2.72)
+		valid_cap = valid_cap and points.size() == 4 and patch.peak.is_finite() and patch.peak.y > Art.BACKING_ROOF and patch.peak.y <= 2.720001
+		for index in 4:
+			var point := points[index]
+			var key := Vector2(point.x,point.z)
+			valid_cap = valid_cap and point.is_finite() and point.y > Art.BACKING_ROOF and point.y <= 2.720001
+			valid_cap = valid_cap and absf(point.x-patch.cell.x*2) <= 1 and absf(point.z-patch.cell.y*2) <= 1
+			if corners.has(key): valid_cap=valid_cap and is_equal_approx(corners[key],point.y)
+			corners[key]=point.y
+			var normal := -(points[(index+1)%4]-point).cross(patch.peak-point)
+			valid_cap = valid_cap and normal.y > 0
+		valid_cap=valid_cap and absf(patch.peak.x-patch.cell.x*2)<1 and absf(patch.peak.z-patch.cell.y*2)<1
+	check(plateau,"Eight-neighbor boundary plateaus preserve the old wall-back masking envelope without higher geometry")
+	check(valid_cap and patches.size()==coverage.size(),"Finite upward cap exactly covers solid cells, shares corner heights and cannot enter walkable footprints")
+	check(Art.GROUT_TOP > 0.036 and Art.GROUT_TOP < 0.0475,"Quiet grout strictly separates source accents from the slab tops")
 	var holder := Node3D.new()
 	root.add_child(holder)
 	for kind: String in Assets.MODELS:
@@ -36,6 +61,9 @@ func run_assertions() -> void:
 	check(randi() == expected_random, "Decoration does not consume gameplay random sequence")
 	var art := holder.get_node("EnvironmentArt")
 	check(art.find_children("*", "CollisionObject3D", true, false).is_empty(), "Dungeon art preserves original collision/navigation")
+	var cap_mesh: MeshInstance3D = art.get_node("FacetedSlateCap")
+	check(cap_mesh.mesh.get_faces().size() <= Art.rock_cap_layout(layout.walkable,1337).size()*36 and cap_mesh.mesh.get_surface_count()==1,"Slate cap uses bounded fixed triangles per cell in one opaque surface")
+	check(cap_mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and art.has_node("QuietGrout"),"Surface polish adds no cap shadows and includes quiet grout")
 	var positions: Dictionary = {}
 	var floor_instances := 0
 	var plan := Art.dungeon_layout(layout.walkable, 1337)
