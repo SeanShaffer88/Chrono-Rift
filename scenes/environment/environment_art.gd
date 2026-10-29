@@ -25,7 +25,7 @@ static func dungeon(parent: Node3D, walkable: Dictionary, seed_value: int) -> vo
 	root.add_child(Assets.batch("pier", plan.piers))
 	_flagstones(root,walkable,seed_value)
 	_masonry(root, walkable, seed_value)
-	_rock_backing(root,walkable)
+	_rock_backing(root,walkable,seed_value)
 
 static func paving_layout(walkable: Dictionary, seed_value: int) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -40,7 +40,15 @@ static func paving_layout(walkable: Dictionary, seed_value: int) -> Array[Dictio
 				start += width+0.02
 	return result
 
+const GROUT_TOP := 0.040
+const BACKING_ROOF := 2.25
+
 static func _flagstones(parent: Node3D,walkable: Dictionary,seed_value: int) -> void:
+	# Opaque quiet grout hides source-floor pattern through narrow slab gaps.
+	var grout := Bake.new()
+	for cell: Vector2i in walkable:
+		grout.box(Vector3(2,0.002,2),Vector3(cell.x*2,GROUT_TOP-0.001,cell.y*2),Color("95866f"))
+	grout.finish(parent,"QuietGrout")
 	var bake := Bake.new()
 	for slab: Dictionary in paving_layout(walkable,seed_value): bake.box(slab.size,slab.at,slab.color)
 	bake.finish(parent,"InsetFlagstones")
@@ -62,14 +70,64 @@ static func backing_runs(walkable: Dictionary) -> Array[Rect2i]:
 			result.append(Rect2i(start,y,x-start,1))
 	return result
 
-static func _rock_backing(parent: Node3D,walkable: Dictionary) -> void:
+static func rock_boundary_cell(cell: Vector2i,walkable: Dictionary) -> bool:
+	if walkable.has(cell): return false
+	for y in range(-1,2):
+		for x in range(-1,2):
+			if walkable.has(cell+Vector2i(x,y)): return true
+	return false
+
+static func rock_corner_height(corner: Vector2i,walkable: Dictionary,seed_value: int) -> float:
+	# Shared plateau reproduces the old masking envelope over imported wall backs.
+	for offset in [Vector2i.ZERO,Vector2i.LEFT,Vector2i.UP,Vector2i(-1,-1)]:
+		if rock_boundary_cell(corner+offset,walkable): return 2.72
+	var key := posmod(corner.x*73+corner.y*97+seed_value*11,101)/100.0
+	return lerpf(2.30,2.60,key)
+
+static func rock_cap_layout(walkable: Dictionary,seed_value: int) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for run: Rect2i in backing_runs(walkable):
+		for x in range(run.position.x,run.end.x):
+			var cell := Vector2i(x,run.position.y)
+			var points := PackedVector3Array()
+			for offset in [Vector2i.ZERO,Vector2i.RIGHT,Vector2i.ONE,Vector2i.DOWN]:
+				var corner: Vector2i = cell+offset
+				points.append(Vector3(corner.x*2-1,rock_corner_height(corner,walkable,seed_value),corner.y*2-1))
+			var key := posmod(cell.x*43+cell.y*61+seed_value*7,101)
+			var peak := Vector3(cell.x*2+(key%5-2)*0.13,lerpf(2.32,2.70,key/100.0),cell.y*2+(key%7-3)*0.11)
+			# Boundary cells stay near the dressed wall coping, retaining clear lanes.
+			if rock_boundary_cell(cell,walkable): peak.y=2.72
+			result.append({"cell":cell,"corners":points,"peak":peak,"shade":key})
+	return result
+
+static func _rock_backing(parent: Node3D,walkable: Dictionary,seed_value: int) -> void:
 	var bake := Bake.new()
 	var runs := backing_runs(walkable)
 	for run: Rect2i in runs:
-		bake.box(Vector3(run.size.x*2,2.72,2),Vector3((run.position.x+(run.size.x-1)*0.5)*2,1.36,run.position.y*2),Color("35464f"))
+		bake.box(Vector3(run.size.x*2,BACKING_ROOF,2),Vector3((run.position.x+(run.size.x-1)*0.5)*2,BACKING_ROOF/2,run.position.y*2),Color("35464f"))
 	var result := bake.finish(parent,"SolidRockBacking")
 	result.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if runs.is_empty(): return
+	var cap := Bake.new()
+	var patches := rock_cap_layout(walkable,seed_value)
+	var cap_cells := {}
+	for patch: Dictionary in patches: cap_cells[patch.cell]=true
+	for patch: Dictionary in patches:
+		var points: PackedVector3Array = patch.corners
+		for index in 4:
+			cap.surface.set_color(Color("35464f").lightened((patch.shade%5-2)*0.012))
+			# Clockwise triangles produce upward normals in Godot.
+			for point in [points[index],points[(index+1)%4],patch.peak]:
+				cap.surface.add_vertex(point)
+				cap.vertex_count+=1
+			if cap_cells.has(patch.cell+[Vector2i.UP,Vector2i.RIGHT,Vector2i.DOWN,Vector2i.LEFT][index]): continue
+			var a := points[index]
+			var b := points[(index+1)%4]
+			for point in [a,Vector3(a.x,BACKING_ROOF,a.z),b,b,Vector3(a.x,BACKING_ROOF,a.z),Vector3(b.x,BACKING_ROOF,b.z)]:
+				cap.surface.add_vertex(point)
+				cap.vertex_count+=1
+	var cap_mesh := cap.finish(parent,"FacetedSlateCap")
+	cap_mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var bounds := Rect2i(runs[0].position,Vector2i.ONE)
 	for run: Rect2i in runs: bounds = bounds.merge(run)
 	var skyline := Bake.new()
