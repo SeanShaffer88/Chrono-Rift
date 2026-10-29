@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -11,36 +14,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Godot 4.3-stable
+      - name: Download pinned Godot and verify checksum
+        shell: bash
         run: |
-          curl -sSL -o godot.zip https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
-          unzip -q godot.zip
-          mv Godot_v4.3-stable_linux.x86_64 "$RUNNER_TEMP/godot"
-          "$RUNNER_TEMP/godot" --version
+          set -euo pipefail
+          version=$(tr -d '\r\n' < .godot-version)
+          archive="Godot_v${version}-stable_linux.x86_64.zip"
+          base="https://github.com/godotengine/godot/releases/download/${version}-stable"
+          cd "$RUNNER_TEMP"
+          curl --fail --location --retry 3 -o "$archive" "$base/$archive"
+          curl --fail --location --retry 3 -o SHA512-SUMS.txt "$base/SHA512-SUMS.txt"
+          awk -v name="$archive" '$2 == name || $2 == "*" name { print }' SHA512-SUMS.txt > selected-checksum.txt
+          test -s selected-checksum.txt
+          sha512sum --check selected-checksum.txt
+          unzip -q "$archive"
+          mv "Godot_v${version}-stable_linux.x86_64" godot
+          chmod +x godot
 
-      - name: Build import cache
-        run: |
-          timeout 300 "$RUNNER_TEMP/godot" --headless --path . --editor --quit || true
-          timeout 300 "$RUNNER_TEMP/godot" --headless --path . --editor --quit || true
+      - name: Import and run all tests
+        shell: pwsh
+        run: ./tools/Test-Project.ps1 -GodotPath "$env:RUNNER_TEMP/godot"
 
-      - name: Run tests
-        run: |
-          set +e +o pipefail
-          status=0
-          for test in tests/test_*.gd; do
-            [ "$test" = "tests/test_harness_template.gd" ] && continue
-            echo "::group::$test"
-            timeout 120 "$RUNNER_TEMP/godot" --headless --path . -s "$test" 2>&1 | tee test_output.log
-            code=${PIPESTATUS[0]}
-            # Script errors don't always change the exit code, so check the output too.
-            if [ "$code" != "0" ] || grep -qE "FAIL:|SCRIPT ERROR|Parse Error" test_output.log; then
-              status=1
-              # Surface errors as an annotation so they are readable without downloading logs.
-              summary=$(grep -E -A2 "FAIL:|SCRIPT ERROR|Parse Error|Test timed out" test_output.log | head -60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
-              echo "::error title=$test failed (exit $code)::${summary}"
-            else
-              echo "::notice title=$test passed::$(grep -c 'PASS:' test_output.log) checks passed"
-            fi
-            echo "::endgroup::"
-          done
-          exit $status
+      - name: Retain verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-logs
+          path: .godot/verification/
+          if-no-files-found: ignore

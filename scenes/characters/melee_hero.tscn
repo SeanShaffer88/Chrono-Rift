@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/characters/character_base.tscn" id="1_base"]
 [ext_resource type="Script" path="res://scenes/characters/melee_hero.gd" id="2_melee"]
+[ext_resource type="Script" path="res://scripts/combat/hitbox_3d.gd" id="3_hitbox"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_blade"]
 size = Vector3(0.1, 0.04, 1.1)
@@ -27,6 +28,7 @@ mesh = SubResource("BoxMesh_blade")
 material_override = SubResource("StandardMaterial3D_blade")
 
 [node name="WeaponHitbox" type="Area3D" parent="Visual/WeaponPivot"]
+script = ExtResource("3_hitbox")
 collision_layer = 8
 collision_mask = 64
 monitoring = false

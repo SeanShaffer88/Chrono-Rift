@@ -53,18 +53,31 @@ func _input(event: InputEvent) -> void:
 		_handle_drag(event)
 
 func _handle_touch(event: InputEventScreenTouch) -> void:
+	if event.canceled:
+		if event.index == _touch_index:
+			_release()
+		return
 	if event.pressed:
-		if _touch_index != -1 or not _in_touch_zone(event.position):
+		if not is_visible_in_tree() or _touch_index != -1 or not _in_touch_zone(event.position):
 			return
 		_touch_index = event.index
 		_base_pos = event.position
 		_update_knob(event.position)
 		_accept_event()
 	elif event.index == _touch_index:
-		_touch_index = -1
-		_reset_to_rest()
-		joystick_released.emit()
+		_release()
 		_accept_event()
+
+func _release() -> void:
+	_touch_index = -1
+	_reset_to_rest()
+	joystick_released.emit()
+
+func _notification(what: int) -> void:
+	if what in [NOTIFICATION_EXIT_TREE, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_WINDOW_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED] and is_active():
+		_release()
+	elif what == NOTIFICATION_VISIBILITY_CHANGED and not is_visible_in_tree() and is_active():
+		_release()
 
 func _handle_drag(event: InputEventScreenDrag) -> void:
 	if event.index != _touch_index:
