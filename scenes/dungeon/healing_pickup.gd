@@ -18,12 +18,7 @@ func _ready() -> void:
 	collision.shape = shape
 	collision.position.y = 0.6
 	add_child(collision)
-	var mesh := Factory.create_box(Vector3(0.34, 0.5, 0.34), Color("c85c72"), 0.35)
-	mesh.position.y = 0.6
-	add_child(mesh)
-	var stripe := Factory.create_box(Vector3(0.38, 0.12, 0.38), Color("f5dbc6"))
-	stripe.position.y = 0.6
-	add_child(stripe)
+	preload("res://scenes/environment/pickup_art.gd").healing(self)
 	body_entered.connect(try_companion_collect)
 
 func try_companion_collect(body: Node3D) -> bool:

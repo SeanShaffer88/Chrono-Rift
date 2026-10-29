@@ -4,6 +4,7 @@ const Assets = preload("res://scripts/utilities/environment_assets.gd")
 const Factory = preload("res://scripts/utilities/primitive_mesh_factory.gd")
 const Scenery = preload("res://scripts/utilities/scenery.gd")
 const Paper = preload("res://scenes/environment/papercraft.gd")
+const Bake = preload("res://scripts/utilities/art_mesh.gd")
 static var river_material: ShaderMaterial
 
 static func river() -> ShaderMaterial:
@@ -22,6 +23,15 @@ static func dungeon(parent: Node3D, walkable: Dictionary, seed_value: int) -> vo
 	root.add_child(Assets.batch("wall", plan.walls))
 	root.add_child(Assets.batch("wall_detail", plan.details))
 	root.add_child(Assets.batch("pier", plan.piers))
+	var tiles: Array[Vector2i] = []
+	for cell: Vector2i in walkable:
+		for offset: Vector2i in [Vector2i.ZERO, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.ONE]:
+			tiles.append(cell * 2 + offset)
+	var paving := Factory.create_tile_batch(tiles, Vector3(0.965,0.025,0.965), Color("9e8b70"), 1.0, 0.013)
+	paving.name = "InsetFlagstones"
+	paving.position = Vector3(-0.5,0,-0.5)
+	root.add_child(paving)
+	_masonry(root, walkable, seed_value)
 
 static func dungeon_layout(walkable: Dictionary, seed_value: int) -> Dictionary:
 	var floors: Array[Transform3D] = []
@@ -37,7 +47,7 @@ static func dungeon_layout(walkable: Dictionary, seed_value: int) -> Dictionary:
 		if key % 17 == 0:
 			accents.append(Transform3D(Basis(Vector3.UP, (key % 4) * PI / 2).scaled(Vector3(0.5, 0.18, 0.5)), center))
 		else:
-			floors.append(Transform3D(Basis(Vector3.UP, (key % 4) * PI / 2).scaled(Vector3(0.5, 0.18, 0.5)), center))
+			floors.append(Transform3D(Basis(Vector3.UP, (key % 4) * PI / 2).scaled(Vector3(0.5, 0.18, 0.5)), center - Vector3.UP*0.05))
 			floor_colors.append(Color(shade, shade, shade))
 		for direction in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
 			if walkable.has(cell + direction):
@@ -53,6 +63,29 @@ static func dungeon_layout(walkable: Dictionary, seed_value: int) -> Dictionary:
 				# Piers sit inside the existing solid boundary cell, not the walk lane.
 				piers.append(Transform3D(Basis.IDENTITY.scaled(Vector3(0.22, 0.67, 0.22)), center + Vector3(direction.x, 0, direction.y) * 1.22))
 	return {"floors": floors, "colors": floor_colors, "accents": accents, "walls": walls, "details": details, "piers": piers}
+
+static func _masonry(parent: Node3D, walkable: Dictionary, seed_value: int) -> void:
+	var bake := Bake.new()
+	for cell: Vector2i in walkable:
+		for direction: Vector2i in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
+			if walkable.has(cell + direction): continue
+			var normal := Vector3(-direction.x,0,-direction.y)
+			bake.frame = Transform3D(Basis(Vector3.UP, atan2(normal.x,normal.z)), Vector3(cell.x*2,0,cell.y*2) + Vector3(direction.x,0,direction.y)*1.04)
+			# Shallow staggered stone faces use the existing wall for collision.
+			for course in 3:
+				var tone := Color("697b80").lightened(posmod(cell.x*7+cell.y*3+course,5)*0.015)
+				if course % 2 == 0:
+					for x in [-0.5,0.5]: bake.box(Vector3(0.96,0.81,0.075), Vector3(x,0.48+course*0.9,0.02),tone)
+				else:
+					bake.box(Vector3(0.96,0.81,0.075),Vector3(0,1.38,0.02),tone)
+					for x in [-0.76,0.76]: bake.box(Vector3(0.44,0.81,0.075), Vector3(x,1.38,0.02),tone.darkened(0.025))
+			bake.box(Vector3(2.0,0.16,0.12), Vector3(0,2.78,0.01), Color("929580"))
+			var along: int = cell.x if direction.y != 0 else cell.y
+			if posmod(along,3) == 0:
+				bake.box(Vector3(0.34,2.8,0.24), Vector3(0,1.4,0.045), Color("89928a"))
+				for height in [0.18,2.62]: bake.box(Vector3(0.48,0.24,0.3),Vector3(0,height,0.065),Color("a3a48c"))
+	var mesh := bake.finish(parent, "MasonryCourses")
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 static func torch(parent: Node3D, at: Vector3, yaw: float, with_light: bool) -> void:
 	var root := Node3D.new()
@@ -185,12 +218,29 @@ static func town_terrain(parent: Node3D) -> Node3D:
 		var at := Vector3(-13 if side == 0 else 140 if side == 1 else along, 0, -13 if side == 2 else 140 if side == 3 else along)
 		var distance := maxf(maxf(-1 - at.x, at.x - 127), maxf(-1 - at.z, at.z - 127))
 		at.y = distance * (0.38 + sin(at.x * 0.05 + at.z * 0.03) * 0.16)
-		Paper.tree(root, at, 2.0 + (index % 3) * 0.45)
+		if index % 3 == 0:
+			Paper.round_tree(root, at, 2.3 + (index % 3) * 0.35)
+		else:
+			Paper.tree(root, at, 2.0 + (index % 3) * 0.45)
 		if index % 2 == 0:
 			Scenery.add(root, "boulder", at + Vector3(2, -0.3, 2), 2.5)
+	_paper_ridges(root)
 	_shore(root)
 	Paper.apply(root)
 	return root
+
+static func _paper_ridges(parent: Node3D) -> void:
+	var bake := Bake.new()
+	for side in 4:
+		var rotation := Basis(Vector3.UP, side * PI / 2)
+		for layer in 3:
+			var points := PackedVector2Array([Vector2(-82,0),Vector2(82,0)])
+			for index in range(12,-1,-1):
+				points.append(Vector2(-82 + index*164.0/12, 6.0 + layer*2 + sin(index*1.7 + side)*3.0))
+			# Backdrop cards stay beyond physical world boundaries, never walk-through scenery.
+			var at := Vector3(64,8 + layer*2,64) + rotation * Vector3(0,0,97 + layer*6)
+			bake.cutout(points,0.18,Transform3D(rotation,at),Color("52776b").lerp(Color("92a875"),layer*0.22),Color("c9c29a"))
+	bake.finish(parent,"LayeredPaperRidges",Paper.material(Color.WHITE,null,true))
 
 static func _shore(parent: Node3D) -> void:
 	var surface := SurfaceTool.new()

@@ -73,6 +73,10 @@ func run_assertions() -> void:
 	for normal: Vector3 in bank.mesh.surface_get_arrays(0)[Mesh.ARRAY_NORMAL]:
 		banks_up = banks_up and normal.y > 0.99
 	check(banks_up, "Both paper riverbanks face upward without double-sided rendering")
+	var backdrop_outside := true
+	for point: Vector3 in terrain.get_node("LayeredPaperRidges").mesh.get_faces():
+		backdrop_outside = backdrop_outside and (point.x < -32 or point.x > 160 or point.z < -32 or point.z > 160)
+	check(backdrop_outside, "Paper backdrop cards remain outside the walkable world's physical boundaries")
 	terrain.free()
 	var grid := Grid.new()
 	grid.bind_session(state)

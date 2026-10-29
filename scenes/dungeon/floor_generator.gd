@@ -93,6 +93,7 @@ func _build_content() -> void:
 			if not layout.walkable.has(neighbor):
 				walls[neighbor] = true
 	EnvironmentArt.dungeon(content, layout.walkable, floor_seed)
+	preload("res://scenes/environment/dungeon_landmarks.gd").build(content,layout.rooms,layout.walkable,floor_seed)
 	var solid := StaticBody3D.new()
 	solid.collision_layer = 1
 	solid.collision_mask = 0
@@ -230,6 +231,7 @@ func restore_progress(record: Dictionary) -> void:
 		else:
 			guard.current_hp = int(record.guard_hp)
 	if content != null:
+		content.get_node("ExitGate")._update_gate()
 		if key_collected:
 			content.get_node("GateKey").free()
 		for child: Node in content.get_children():

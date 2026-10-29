@@ -3,7 +3,7 @@ extends RefCounted
 const MODELS = {
 	"wall": preload("res://assets/kenney/dungeon/template-wall.glb"),
 	"wall_detail": preload("res://assets/kenney/dungeon/template-wall-detail-a.glb"),
-	"floor": preload("res://assets/kenney/dungeon/template-floor-detail.glb"),
+	"floor": preload("res://assets/kenney/dungeon/template-floor.glb"),
 	"floor_alt": preload("res://assets/kenney/dungeon/template-floor-detail-a.glb"),
 	"pier": preload("res://assets/kenney/dungeon/template-detail.glb"),
 	"wood_wall": preload("res://assets/kenney/town-detail/wall-wood.glb"),
