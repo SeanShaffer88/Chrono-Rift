@@ -7,6 +7,10 @@ const Factory := preload("res://scripts/utilities/primitive_mesh_factory.gd")
 const Orb := preload("res://scenes/dungeon/atla_sphere.gd")
 const Pickup := preload("res://scenes/dungeon/dungeon_pickup.gd")
 const Healing = preload("res://scenes/dungeon/healing_pickup.gd")
+const Encounters=preload("res://scripts/combat/encounter_layout.gd")
+const Profiles=preload("res://scripts/combat/enemy_profiles.gd")
+var encounter_plan: Dictionary = {}
+var encounters: Dictionary = {}
 const Guard := preload("res://scenes/characters/dungeon_guard.gd")
 const Services := preload("res://scripts/utilities/services.gd")
 const CELL_SIZE := 2.0
@@ -32,7 +36,7 @@ var collected_healing: Array[String] = []
 
 func generate(seed_value: int, number: int = 1, build_geometry: bool = true) -> bool:
 	var candidate := BSP.new()
-	if number < 1 or orb_count < 1 or orb_count > 20 or not candidate.generate(seed_value, grid_size):
+	if number < 1 or orb_count < 1 or orb_count > 20 or not candidate.generate(seed_value, grid_size,preload("res://scripts/utilities/dungeon_biomes.gd").for_floor(number)):
 		return false
 	# Validate before replacing a playable floor.
 	layout = candidate
@@ -59,6 +63,11 @@ func generate(seed_value: int, number: int = 1, build_geometry: bool = true) -> 
 		var pick := rng.randi_range(0, available.size() - 1)
 		orb_cells.append(available[pick])
 		available.remove_at(pick)
+	var encounter_reserved: Array=reserved.duplicate()
+	encounter_reserved.append_array(orb_cells)
+	for room: Rect2i in layout.rooms.slice(0,3): encounter_reserved.append(room.get_center()+Vector2i.DOWN)
+	encounter_plan=Encounters.plan(layout.rooms,layout.walkable,encounter_reserved,seed_value)
+	encounters.clear()
 	if is_instance_valid(content):
 		content.free()
 	content = null
@@ -116,6 +125,12 @@ func _build_content() -> void:
 	guard.position = cell_to_world(guard_cell)
 	guard.hit_received.connect(_on_guard_hit)
 	content.add_child(guard)
+	for role: String in encounter_plan:
+		var enemy := create_enemy(role,encounter_plan[role])
+		enemy.name=role.capitalize()
+		enemy.position=cell_to_world(encounter_plan[role])
+		encounters[role]=enemy
+		content.add_child(enemy)
 	for kind in [Pickup.Kind.KEY, Pickup.Kind.EXIT]:
 		var trigger := Pickup.new()
 		trigger.kind = kind
@@ -165,12 +180,16 @@ func _add_collision(body: StaticBody3D, size: Vector3, position_value: Vector3) 
 	body.add_child(collision)
 
 func _create_guard() -> CharacterBody3D:
+	return create_enemy("guard",guard_cell)
+
+func create_enemy(role: String,cell: Vector2i) -> CharacterBody3D:
 	var body := Guard.new()
+	body.role=role if role in Profiles.ROLES else "guard"
 	body.floor_owner = self
 	body.art_biome = preload("res://scripts/utilities/dungeon_biomes.gd").for_floor(floor_number)
 	for offset in [Vector2i.ZERO, Vector2i(0, 2), Vector2i(2, 0)]:
-		if layout.walkable.has(guard_cell + offset):
-			body.patrol_points.append(cell_to_world(guard_cell + offset))
+		if layout.walkable.has(cell + offset):
+			body.patrol_points.append(cell_to_world(cell + offset))
 	body.respawn_delay = 1e20
 	body.collision_layer = 4
 	body.collision_mask = 7
@@ -193,6 +212,7 @@ func _create_guard() -> CharacterBody3D:
 	hurtbox.name = "Hurtbox"
 	hurtbox.collision_layer = 64
 	hurtbox.collision_mask = 0
+	hurtbox.set_script(preload("res://scripts/combat/hurtbox_3d.gd"))
 	hurtbox.monitoring = false
 	var hurt_shape := CollisionShape3D.new()
 	hurt_shape.shape = shape
@@ -206,9 +226,21 @@ func _on_guard_hit(_damage: int, hp: int) -> void:
 		guard_defeated = true
 
 func progress_snapshot() -> Dictionary:
-	return {"key": key_collected, "guard_defeated": guard_defeated, "guard_hp": guard.current_hp if is_instance_valid(guard) else (0 if guard_defeated else 60), "healing": collected_healing.duplicate()}
+	var records: Array=[]
+	for role: String in Profiles.ROLES:
+		var enemy: Node3D=encounters.get(role)
+		records.append({"id":role,"hp":enemy.current_hp if is_instance_valid(enemy) and enemy.is_alive() else 0})
+	return {"encounters":records,"key": key_collected, "guard_defeated": guard_defeated, "guard_hp": guard.current_hp if is_instance_valid(guard) else (0 if guard_defeated else 60), "healing": collected_healing.duplicate()}
 
 func restore_progress(record: Dictionary) -> void:
+	for entry: Dictionary in record.encounters:
+		var enemy: Node3D=encounters.get(entry.id)
+		if not is_instance_valid(enemy): continue
+		enemy.cancel_projectiles()
+		if int(entry.hp)==0: enemy.receive_hit(enemy.max_hp,self)
+		else:
+			enemy.current_hp=int(entry.hp)
+			enemy._set_state(enemy.State.PATROL)
 	key_collected = record.key
 	guard_defeated = record.guard_defeated
 	collected_healing.assign(record.healing)

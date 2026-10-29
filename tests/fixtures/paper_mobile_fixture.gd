@@ -23,6 +23,7 @@ func _run() -> void:
 		dungeon.dungeon_seed=1337
 		dungeon._load_floor()
 		dungeon.floor_generator.guard.set_physics_process(false)
+		for enemy: Node3D in dungeon.floor_generator.encounters.values(): enemy.set_physics_process(false)
 		hero.camera_rig.restore_view(0,deg_to_rad(-40))
 		await capture("biome-%d-player" % number)
 		var corner: Vector2i=dungeon.floor_generator.spawn_cell

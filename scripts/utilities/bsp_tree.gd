@@ -5,11 +5,13 @@ const DIRECTIONS := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
 var rooms: Array[Rect2i] = []
 var walkable: Dictionary = {}
 var size := Vector2i(48, 48)
+var style := "classic"
 var _rng := RandomNumberGenerator.new()
 
-func generate(seed_value: int, grid_size: Vector2i = Vector2i(48, 48)) -> bool:
+func generate(seed_value: int, grid_size: Vector2i = Vector2i(48, 48),room_style: String="classic") -> bool:
 	if grid_size.x < 24 or grid_size.y < 24 or grid_size.x > 128 or grid_size.y > 128:
 		return false
+	style=room_style if room_style in ["frost","overgrown_rail"] else "classic"
 	size = grid_size
 	rooms.clear()
 	walkable.clear()
@@ -39,11 +41,14 @@ func _split(bounds: Rect2i, depth: int) -> Vector2i:
 		_connect(first, second)
 		return first
 	var room_size := Vector2i(_rng.randi_range(5, bounds.size.x - 2), _rng.randi_range(5, bounds.size.y - 2))
+	if style=="overgrown_rail":
+		room_size=Vector2i(bounds.size.x-2,mini(7,bounds.size.y-2)) if bounds.size.x>=bounds.size.y else Vector2i(mini(7,bounds.size.x-2),bounds.size.y-2)
 	var origin := bounds.position + Vector2i(_rng.randi_range(1, bounds.size.x - room_size.x - 1), _rng.randi_range(1, bounds.size.y - room_size.y - 1))
 	var room := Rect2i(origin, room_size)
 	rooms.append(room)
 	for y in range(room.position.y, room.end.y):
 		for x in range(room.position.x, room.end.x):
+			if style=="frost" and room.size.x>=7 and room.size.y>=7 and x in [room.position.x,room.end.x-1] and y in [room.position.y,room.end.y-1]: continue
 			walkable[Vector2i(x, y)] = true
 	return room.get_center()
 

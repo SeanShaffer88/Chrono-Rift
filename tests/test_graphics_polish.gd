@@ -48,7 +48,11 @@ func run_assertions() -> void:
 	check(again.mesh.get_faces().size() == face_count, "Landmark geometry is deterministic")
 	var gate: Node = floor.content.get_node("ExitGate")
 	check(gate.gate_material.get_shader_parameter("opacity") == 0.18, "Locked exit has subdued veil")
-	floor.restore_progress({"key":true,"guard_defeated":true,"guard_hp":0,"healing":[]})
+	var restored := floor.progress_snapshot()
+	restored.key=true
+	restored.guard_defeated=true
+	restored.guard_hp=0
+	floor.restore_progress(restored)
 	check(gate.gate_material.get_shader_parameter("opacity") == 0.5, "Restored unlocked floor updates gate visuals without replaying collection")
 	check(floor.content.get_node("EnvironmentArt/MasonryCourses").mesh.get_surface_count() == 1, "All masonry faces share a draw surface")
 	holder.free()

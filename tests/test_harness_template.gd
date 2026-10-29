@@ -16,6 +16,13 @@ func _run() -> void:
 	create_timer(TIMEOUT_SECONDS).timeout.connect(_on_timeout)
 	await process_frame
 	await run_assertions()
+	# Let the native audio server retire stopped playbacks before process shutdown.
+	var audio := root.get_node_or_null("GameState/CombatAudio")
+	if audio!=null:
+		audio.set_muted(true)
+		audio.queue_free()
+		await process_frame
+		await create_timer(0.10).timeout
 	if _failures == 0:
 		print("--- Test Passed Successfully ---")
 		quit(0)

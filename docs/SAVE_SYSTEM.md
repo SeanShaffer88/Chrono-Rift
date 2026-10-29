@@ -80,4 +80,6 @@ driver backgrounds, force-stops and relaunches that app across four launches,
 checking town/dungeon persistence and a deliberately corrupt primary's recovery.
 Shipping exports exclude all fixtures/tests and documentation.
 
-Current format3 requires five known inventories and boolean secret_unlocked; Devourer has no weapon entries and requires unlock to be active. Unlock records only a real floor6 exit; no floor-number inference or old-save migration.
+Current format4 requires five known inventories and boolean secret_unlocked; Devourer has no weapon entries and requires unlock to be active. Unlock records only a real floor6 exit; no floor-number inference or old-save migration.
+
+Format4 also requires the three bounded stable encounter HP/death records. Unknown, duplicate, missing and over-limit records reject; no earlier-format migration.

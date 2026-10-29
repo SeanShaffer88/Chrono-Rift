@@ -8,6 +8,6 @@ Devourer uses the existing three-step melee cadence, range, hitbox, LOS, dodge a
 
 Its inventory is empty and rejects weapon storage/equipping. There is no weapon resource, durability or equipment for Devourer. Core upgrades remain a separate documented plan, not implemented mechanics.
 
-SaveStore format is now version 3, explicitly requiring all five known inventories and boolean secret_unlocked. Devourer must have an empty inventory with equipped -1; activating it requires the flag. No older save migration or inferred unlock is supported. Unsupported files are preserved and autosave blocks rather than overwriting them. Validation uses isolated fresh QA paths.
+SaveStore format is now version 4, explicitly requiring all five known inventories and boolean secret_unlocked. Devourer must have an empty inventory with equipped -1; activating it requires the flag. No older save migration or inferred unlock is supported. Unsupported files are preserved and autosave blocks rather than overwriting them. Validation uses isolated fresh QA paths.
 
 The current model is a bounded opaque native prototype; the concept is a design reference. All geometry/materials are cached, with no extra collisions, shaders, lights or per-frame mesh generation.
