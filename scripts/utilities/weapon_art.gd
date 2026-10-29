@@ -18,6 +18,23 @@ static func mesh(id: String) -> Mesh:
 	if id == "battle_wrench":
 		bake.pipe(Vector3(0,0,-0.46),Vector3(0,0,0.44),0.075,steel)
 		bake.pipe(Vector3(0,0,0.08),Vector3(0,0,0.4),0.086,Color("71533c"))
+	elif id == "battlemage_staff":
+		# Balanced double-ended melee staff; visual reach stays inside shared hit range.
+		bake.pipe(Vector3(0,0,-0.66),Vector3(0,0,0.72),0.042,Color("75503b"))
+		for along in [-0.59,-0.46,0.48,0.65]: bake.box(Vector3(0.13,0.11,0.035),Vector3(0,0,along),Color("9d9c92"))
+		var blade := PackedVector2Array([Vector2(-0.30,-1.06),Vector2(-0.10,-0.85),Vector2(-0.17,-0.63),Vector2(0.10,-0.65),Vector2(0.32,-0.95),Vector2(0.18,-1.10),Vector2(0,-1.00)])
+		if Geometry2D.is_polygon_clockwise(blade): blade.reverse()
+		bake.cutout(blade,0.085,Transform3D(Basis(Vector3.RIGHT,PI/2),Vector3.ZERO),Color("8e9494"),Color("d5d0c0"))
+		for side in [-1,1]:
+			var crown := PackedVector2Array()
+			for point: Vector2 in [Vector2(0.035,0.70),Vector2(0.16,0.80),Vector2(0.24,1.12),Vector2(0.12,1.02),Vector2(0.08,0.84)]: crown.append(Vector2(point.x*side,point.y))
+			if Geometry2D.is_polygon_clockwise(crown): crown.reverse()
+			bake.cutout(crown,0.07,Transform3D(Basis(Vector3.RIGHT,PI/2),Vector3.ZERO),Color("727a7e"),Color("cbc6b9"))
+		for face in [-1,1]:
+			var inset := PackedVector2Array([Vector2(-0.10,-0.91),Vector2(0,-0.98),Vector2(0.11,-0.85),Vector2(0,-0.73)])
+			bake.cutout(inset,0.012,Transform3D(Basis(Vector3.RIGHT,PI/2),Vector3(0,face*0.05,0)),Color("9d3b44"),Color("c57b74"))
+		var gem := PackedVector2Array([Vector2(-0.10,1.0),Vector2(0,0.90),Vector2(0.10,1.0),Vector2(0,1.15)])
+		bake.cutout(gem,0.095,Transform3D(Basis(Vector3.RIGHT,PI/2),Vector3.ZERO),Color("ae3e4c"),Color("da8c83"))
 	elif id == "trail_sword":
 		var blade_points := PackedVector2Array([Vector2(-0.065,0.17),Vector2(0.065,0.17),Vector2(0.065,-0.48),Vector2(0,-0.66),Vector2(-0.065,-0.48)])
 		if Geometry2D.is_polygon_clockwise(blade_points): blade_points.reverse()

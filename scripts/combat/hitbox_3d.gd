@@ -13,7 +13,18 @@ func set_active(value: bool) -> void:
 		_hit_targets.clear()
 	set_deferred("monitoring", value)
 
+var last_resolved_damage := 0
+var last_swallowed := false
+
+func try_swallow(area: Area3D, source: Node, damage: int) -> Node:
+	return _try_hit(area,source,damage,{},{},true)
+
 func try_hit(area: Area3D, source: Node, damage: int, elements: Dictionary = {}, slayers: Dictionary = {}) -> Node:
+	return _try_hit(area,source,damage,elements,slayers,false)
+
+func _try_hit(area: Area3D, source: Node, damage: int, elements: Dictionary = {}, slayers: Dictionary = {}, swallow: bool = false) -> Node:
+	last_resolved_damage=0
+	last_swallowed=false
 	if not active or damage <= 0 or not is_instance_valid(area):
 		return null
 	if is_instance_valid(source) and source.has_method("is_alive") and not source.is_alive():
@@ -31,8 +42,12 @@ func try_hit(area: Area3D, source: Node, damage: int, elements: Dictionary = {},
 		return null
 	if _hit_targets.has(id):
 		return null
-	# Reserve before calling receivers: damage signals can reenter this method.
+	# Reserve before any receiver-owned resolver or damage callback can reenter.
 	_hit_targets[id] = true
+	var swallowed := false
+	if swallow and receiver.has_method("get_swallow_damage"):
+		damage = int(receiver.get_swallow_damage(damage))
+		swallowed = not bool(receiver.get("is_boss"))
 	var accepted := false
 	if target.has_method("receive_weapon_hit"):
 		accepted = target.call("receive_weapon_hit", damage, source, elements.duplicate(true), slayers.duplicate(true)) == true
@@ -43,4 +58,6 @@ func try_hit(area: Area3D, source: Node, damage: int, elements: Dictionary = {},
 	if not accepted:
 		_hit_targets.erase(id)
 		return null
+	last_resolved_damage=damage
+	last_swallowed=swallowed
 	return receiver

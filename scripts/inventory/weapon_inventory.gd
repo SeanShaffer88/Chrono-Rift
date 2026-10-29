@@ -11,6 +11,7 @@ const STARTER := preload("res://data/weapons/trail_sword.tres")
 var _weapons: Array[Weapon] = []
 var _equipped: Weapon = null
 var is_session_active := true
+var weaponless := false
 var equipped_weapon: Weapon:
 	get: return _equipped
 
@@ -18,7 +19,7 @@ func get_weapons() -> Array[Weapon]:
 	return _weapons.duplicate()
 
 func add_weapon(template: Weapon) -> Weapon:
-	if template == null or template.is_broken or template.max_durability <= 0.0:
+	if weaponless or template == null or template.is_broken or template.max_durability <= 0.0:
 		return null
 	var instance := template.duplicate(true) as Weapon
 	_weapons.append(instance)
@@ -35,6 +36,7 @@ func _disconnect_weapon(weapon: Weapon) -> void:
 	weapon.durability_changed.disconnect(_on_durability_changed.bind(weapon))
 
 func equip(weapon: Weapon) -> bool:
+	if weaponless and weapon != null: return false
 	if weapon != null and (not _weapons.has(weapon) or (weapon.is_broken and weapon.destroy_on_break)):
 		return false
 	if weapon == _equipped:
@@ -67,7 +69,7 @@ func build_up(weapon: Weapon, branch_index: int) -> Weapon:
 	if not path.begins_with("res://data/weapons/") or not ResourceLoader.exists(path):
 		return null
 	var template := load(path) as Weapon
-	if template == null or template.is_broken or template.max_durability <= 0.0:
+	if weaponless or template == null or template.is_broken or template.max_durability <= 0.0:
 		return null
 	var evolved := template.duplicate(true) as Weapon
 	evolved.base_attack = maxi(evolved.base_attack, weapon.base_attack)
@@ -95,7 +97,7 @@ func reset(with_starter: bool = true, starter_template: Resource = null) -> void
 		_disconnect_weapon(weapon)
 	_weapons.clear()
 	_equipped = null
-	if with_starter:
+	if with_starter and not weaponless:
 		var starter := (starter_template if starter_template != null else STARTER).duplicate(true) as Weapon
 		_weapons.append(starter)
 		_connect_weapon(starter)
@@ -106,10 +108,10 @@ func reset(with_starter: bool = true, starter_template: Resource = null) -> void
 func restore_weapons(weapons: Array[Weapon], equipped_index: int) -> void:
 	for weapon in _weapons:
 		_disconnect_weapon(weapon)
-	_weapons.assign(weapons)
+	_weapons.assign([] if weaponless else weapons)
 	for weapon in _weapons:
 		_connect_weapon(weapon)
-	_equipped = _weapons[equipped_index] if equipped_index >= 0 else null
+	_equipped = _weapons[equipped_index] if equipped_index >= 0 and not weaponless else null
 	_emit_equipped()
 	inventory_changed.emit()
 

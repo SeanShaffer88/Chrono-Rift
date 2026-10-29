@@ -8,7 +8,7 @@ saved town visit can safely create its separate viewport and UI.
 
 ## What is kept
 
-- All three characters' owned/equipped weapons, trained attack/element/slayer
+- All five characters' owned/equipped records (Devourer remains empty), trained attack/element/slayer
   stats, durability, break policy, active character and thirst.
 - Collected restoration IDs and parts, assembled components, placements,
   rotations, resident conversations and completion. Services are derived from
@@ -62,7 +62,7 @@ when the primary is missing/corrupt. Unsupported schemas and two invalid copies
 block writes and keep the original files; the HUD reports that progress is not
 being saved. Filesystem write failures likewise report failure and keep the last
 committed data where replacement has not occurred. Do not silently reset or delete
-a player's files to clear an error. Future schema changes require migration tests.
+a player's files to clear an error. The explicit schema3 boundary does not migrate old formats; unsupported files remain preserved.
 
 Android app updates with the same package/signing identity retain private files;
 uninstalling/clearing app storage removes them. This pass provides no account sync
@@ -79,3 +79,5 @@ It uses a process-specific file and cleans up only its own known paths.
 driver backgrounds, force-stops and relaunches that app across four launches,
 checking town/dungeon persistence and a deliberately corrupt primary's recovery.
 Shipping exports exclude all fixtures/tests and documentation.
+
+Current format3 requires five known inventories and boolean secret_unlocked; Devourer has no weapon entries and requires unlock to be active. Unlock records only a real floor6 exit; no floor-number inference or old-save migration.

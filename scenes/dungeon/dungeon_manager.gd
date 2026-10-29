@@ -1,5 +1,6 @@
 extends Node3D
 
+const Services = preload("res://scripts/utilities/services.gd")
 const Floor := preload("res://scenes/dungeon/floor_generator.gd")
 @export var dungeon_seed: int = 1337
 @export var persistence_path: String = "user://saves/autosave.json"
@@ -150,5 +151,6 @@ func _queue_next_floor() -> void:
 	_advance_floor.call_deferred()
 
 func _advance_floor() -> void:
+	Services.game_state().record_floor_clear(floor_number)
 	floor_number += 1
 	_load_floor()

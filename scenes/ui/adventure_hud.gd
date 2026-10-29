@@ -33,6 +33,7 @@ func _process(_delta: float) -> void:
 	hp.max_value = hero.max_hp
 	hp.value = hero.current_hp
 	var weapon = Services.game_state().weapon_inventory.equipped_weapon
+	whp.visible = hero.character_id != "devourer"
 	whp.max_value = weapon.max_durability if weapon else 1.0
 	whp.value = weapon.current_durability if weapon else 0.0
-	caption.text = "HP %d / %d   WHP %d / %d" % [hp.value, hp.max_value, whp.value, whp.max_value]
+	caption.text = ("HP %d / %d   WHP %d / %d" % [hp.value, hp.max_value, whp.value, whp.max_value]) if whp.visible else ("HP %d / %d" % [hp.value,hp.max_value])

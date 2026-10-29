@@ -91,7 +91,7 @@ func _tick(delta: float) -> void:
 
 ## Starts, buffers or chains an attack. Returns true if the press was used.
 func request_attack() -> bool:
-	if is_dead() or weapon_inventory.equipped_weapon == null:
+	if is_dead() or (character_id != "devourer" and weapon_inventory.equipped_weapon == null):
 		return false
 	var last_step := COMBO_STEPS.size() - 1
 	match combat_state:
@@ -156,9 +156,9 @@ func tick_combat(delta: float) -> void:
 	_animate_weapon()
 
 func get_current_attack_damage() -> int:
-	if combo_step < 0 or weapon_inventory.equipped_weapon == null:
+	if combo_step < 0 or (character_id != "devourer" and weapon_inventory.equipped_weapon == null):
 		return 0
-	return roundi(weapon_inventory.equipped_weapon.get_effective_attack() * float(_current_step()["damage_mult"]))
+	return roundi((15 if character_id=="devourer" else weapon_inventory.equipped_weapon.get_effective_attack()) * float(_current_step()["damage_mult"]))
 
 func is_attacking() -> bool:
 	return combat_state == CombatState.WINDUP or combat_state == CombatState.ACTIVE or combat_state == CombatState.RECOVERY
@@ -259,11 +259,16 @@ func _on_weapon_hitbox_area_entered(area: Area3D) -> void:
 	if is_dead() or not hitbox_active:
 		return
 	var weapon: Resource = weapon_inventory.equipped_weapon
-	if weapon == null:
+	if weapon == null and character_id != "devourer":
 		return
 	var step := combo_step
 	var damage := get_current_attack_damage()
-	var target: Node = weapon_hitbox.try_hit(area, self, damage, weapon.elemental_stats, weapon.slayer_stats)
+	var target: Node
+	if character_id=="devourer":
+		target=weapon_hitbox.try_swallow(area,self,damage)
+	else:
+		target=weapon_hitbox.try_hit(area, self, damage, weapon.elemental_stats, weapon.slayer_stats)
 	if target:
-		weapon_inventory.apply_hit_wear(weapon)
-		hit_landed.emit(target, damage, step)
+		if weapon != null: weapon_inventory.apply_hit_wear(weapon)
+		if character_id=="devourer" and weapon_hitbox.last_swallowed: $Visual.swallow_cue()
+		hit_landed.emit(target, weapon_hitbox.last_resolved_damage, step)

@@ -1,13 +1,14 @@
 # Playable roster and dungeon companion
 
 The Characters button is available in both dungeon and town. Its menu pauses
-the scene tree and offers three original heroes with one shared combat model:
+the scene tree and offers four initially available heroes and one secret hero with one shared combat model:
 
 | Character | Visual direction | Protected starter |
 | --- | --- | --- |
 | Infiltrator | Blond paper hair, green tunic and pointed cap, back-mounted decorative shield | Trail Sword |
 | Shadowblade | Silver paper hair, dark folded coat | Buster Sword |
 | Riftwarden | Ivory mask, dark hood, crimson folded cape | Red Energy Sword |
+| Battlemage | Bent tan hat, blue folded coat, recessed face and warm eyes | Battlestaff |
 
 Display names changed; internal character IDs remain `melee_hero`, `swordsman`
 and `riftwarden`. Weapon IDs/resources `duskblade` and `rift_chain` retain
@@ -46,3 +47,7 @@ The roster/companion regression suite covers inventory ownership and wear,
 switch cancellation, pause/resume, death, reset, radius, occlusion, worlds,
 guarded keys, full-health healing and exit exclusion. Graphical capture script:
 tests/fixtures/roster_visual_fixture.gd.
+
+Battlemage uses stable ID battlemage and protected battlemage_staff, with the existing shared melee timing, hitbox and balance. Save format 3 requires all five inventories and an explicit secret unlock flag; older formats are preserved without migration. The responsive menu uses two columns at viewport widths of 680 or greater, one column below, a scrolling card area and pinned Close. Current additions have targeted native validation; full and Android validation are pending the current scope freeze.
+
+Devourer unlocks after clearing floor6 and is weaponless. See DEVOURER.md for the strict current save and acknowledged swallow contracts.

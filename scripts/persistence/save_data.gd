@@ -3,7 +3,9 @@ extends RefCounted
 const Weapon = preload("res://data/weapons/weapon_data.gd")
 const Grid = preload("res://scenes/georama/town_grid.gd")
 const Roster = preload("res://data/characters/character_roster.gd")
+const LEGACY_HEROES := ["melee_hero","swordsman","riftwarden"]
 const TEMPLATES = {
+	"battlemage_staff": preload("res://data/weapons/battlemage_staff.tres"),
 	"trail_sword": preload("res://data/weapons/trail_sword.tres"),
 	"battle_wrench": preload("res://data/weapons/battle_wrench.tres"),
 	"gladius": preload("res://data/weapons/gladius.tres"),
@@ -48,9 +50,10 @@ static func capture(state: Node, dungeon: Node) -> Dictionary:
 		record.cell = [record.cell.x, record.cell.y]
 		objects[id] = record
 	var floor_state: Dictionary = dungeon.floor_generator.progress_snapshot()
-	return {"active": state.active_character_id, "thirst": state.thirst, "atla": state.atla_inventory.duplicate(), "orbs": state.collected_orb_ids.duplicate(), "town": objects, "town_completed": state.town_completed, "inventories": inventories, "dungeon_seed": dungeon.dungeon_seed, "floor_number": dungeon.floor_number, "hero": actor(dungeon.get_node("MeleeHero")), "floor": floor_state, "town_visit": {"editing": dungeon.town_view.editing, "hero": actor(dungeon.town_view.get_node("MeleeHero"))} if is_instance_valid(dungeon.town_view) else {}}
+	return {"active": state.active_character_id, "secret_unlocked": state.secret_unlocked, "thirst": state.thirst, "atla": state.atla_inventory.duplicate(), "orbs": state.collected_orb_ids.duplicate(), "town": objects, "town_completed": state.town_completed, "inventories": inventories, "dungeon_seed": dungeon.dungeon_seed, "floor_number": dungeon.floor_number, "hero": actor(dungeon.get_node("MeleeHero")), "floor": floor_state, "town_visit": {"editing": dungeon.town_view.editing, "hero": actor(dungeon.town_view.get_node("MeleeHero"))} if is_instance_valid(dungeon.town_view) else {}}
 
 static func validate(data: Dictionary) -> bool:
+	if not data.get("secret_unlocked") is bool or (data.get("active")=="devourer" and not data.secret_unlocked): return false
 	if not Roster.HEROES.has(data.get("active")) or not number(data.get("thirst"), 0, 100) or not valid_actor(data.get("hero")):
 		return false
 	if not number(data.get("dungeon_seed"), -2147483648, 2147483647, true) or not number(data.get("floor_number"), 1, 100000, true):
@@ -69,16 +72,21 @@ static func validate(data: Dictionary) -> bool:
 	var visit: Variant = data.get("town_visit")
 	if not visit is Dictionary or (not visit.is_empty() and (not visit.get("editing") is bool or not valid_actor(visit.get("hero")))):
 		return false
-	if not data.get("town_completed") is bool or not _inventories_valid(data.get("inventories")):
+	if not data.get("town_completed") is bool or not _inventories_valid(data.get("inventories"),str(data.get("active"))):
 		return false
 	return _town_valid(data)
 
-static func _inventories_valid(inventories: Variant) -> bool:
+static func _inventories_valid(inventories: Variant,active: String = "") -> bool:
 	if not inventories is Dictionary or inventories.size() != Roster.HEROES.size(): return false
+	for id: Variant in inventories:
+		if not id is String or not Roster.HEROES.has(id): return false
 	for id: String in Roster.HEROES:
+		if not inventories.has(id): return false
+	for id: String in inventories:
 		var inventory: Variant = inventories.get(id)
 		if not inventory is Dictionary or not inventory.get("weapons") is Array or inventory.weapons.size() > 100: return false
 		if not number(inventory.get("equipped"), -1, inventory.weapons.size() - 1, true): return false
+		if id=="devourer" and (not inventory.weapons.is_empty() or inventory.equipped != -1): return false
 		for item: Variant in inventory.weapons:
 			if not item is Dictionary or not TEMPLATES.has(item.get("id")) or not item.get("destroy") is bool: return false
 			if not number(item.get("attack"), 0, 100000, true) or not number(item.get("maximum"), 0.001, 100000) or not number(item.get("durability"), 0, item.maximum) or not number(item.get("rate"), 0, 100000): return false
@@ -138,6 +146,7 @@ static func apply_state(state: Node, data: Dictionary) -> void:
 			for index in 7: item.slayer_stats[index + 1] = int(record.slayers[index])
 			weapons.append(item)
 		state.character_inventories[id].restore_weapons(weapons, int(data.inventories[id].equipped))
+	state.secret_unlocked = data.secret_unlocked
 	state.thirst = float(data.thirst)
 	state.atla_inventory.assign(data.atla)
 	state.collected_orb_ids = data.orbs.duplicate(true)

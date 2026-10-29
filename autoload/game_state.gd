@@ -25,7 +25,8 @@ func _ready() -> void:
 		var inventory := WeaponInventory.new()
 		inventory.is_session_active = false
 		add_child(inventory)
-		inventory.reset(true, Roster.HEROES[id].starter)
+		inventory.weaponless = id == "devourer"
+		inventory.reset(id != "devourer", Roster.HEROES[id].starter)
 		character_inventories[id] = inventory
 
 @export var thirst_drain_per_second: float = 0.5
@@ -38,6 +39,13 @@ var collected_orb_ids: Dictionary = {}
 var town_objects: Dictionary = {}
 var town_services: Dictionary = {}
 var town_completed := false
+var secret_unlocked := false
+
+func is_character_available(id: String) -> bool:
+	return Roster.HEROES.has(id) and (id != "devourer" or secret_unlocked)
+
+func record_floor_clear(floor_number: int) -> void:
+	if floor_number >= 6: secret_unlocked = true
 
 func has_collected_orb(orb_id: String) -> bool:
 	return collected_orb_ids.has(orb_id)
@@ -63,7 +71,7 @@ func set_mode(new_mode: Mode) -> void:
 	mode_changed.emit(mode)
 
 func swap_character(character_id: String) -> bool:
-	if not Roster.HEROES.has(character_id) or not character_inventories.has(character_id):
+	if not is_character_available(character_id) or not character_inventories.has(character_id):
 		return false
 	if character_id == active_character_id:
 		return true
@@ -104,12 +112,13 @@ func reset() -> void:
 	town_objects.clear()
 	town_services.clear()
 	town_completed = false
+	secret_unlocked = false
 	if not character_inventories.is_empty():
 		weapon_inventory = character_inventories["melee_hero"]
 		for id: String in character_inventories:
 			var inventory: Node = character_inventories[id]
 			inventory.is_session_active = id == active_character_id
-			inventory.reset(true, Roster.HEROES[id].starter)
+			inventory.reset(id != "devourer", Roster.HEROES[id].starter)
 	else:
 		weapon_inventory.reset()
 	if previous_character != active_character_id and Services.event_bus():

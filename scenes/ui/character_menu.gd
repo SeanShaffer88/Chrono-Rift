@@ -8,6 +8,10 @@ var buttons: Dictionary = {}
 var launch := Button.new()
 var was_paused := false
 var opened := false
+var panel: PanelContainer
+var card_scroll: ScrollContainer
+var card_grid: GridContainer
+var cards: Array[Control] = []
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -26,8 +30,7 @@ func _ready() -> void:
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(center)
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(980, 420)
+	panel = PanelContainer.new()
 	var frame := StyleBoxFlat.new()
 	frame.bg_color = Color("142432")
 	frame.border_color = Color("aac6ce")
@@ -37,10 +40,10 @@ func _ready() -> void:
 	center.add_child(panel)
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 24)
+		margin.add_theme_constant_override("margin_" + side, 16)
 	panel.add_child(margin)
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 18)
+	content.add_theme_constant_override("separation", 12)
 	margin.add_child(content)
 	var title := Label.new()
 	title.text = "Characters"
@@ -48,24 +51,39 @@ func _ready() -> void:
 	content.add_child(title)
 	var note := Label.new()
 	note.text = "Switch in the dungeon or town. Position and health stay unchanged."
+	note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(note)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
-	content.add_child(row)
+	card_scroll=ScrollContainer.new()
+	card_scroll.name="CardScroll"
+	card_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+	card_scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL
+	content.add_child(card_scroll)
+	card_grid=GridContainer.new()
+	card_grid.name="CharacterCards"
+	card_grid.add_theme_constant_override("h_separation",16)
+	card_grid.add_theme_constant_override("v_separation",16)
+	card_grid.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	card_scroll.add_child(card_grid)
 	for id: String in Roster.HEROES:
 		var column := VBoxContainer.new()
-		column.custom_minimum_size = Vector2(295, 190)
-		column.add_theme_constant_override("separation", 18)
-		row.add_child(column)
+		column.name="Card_"+id
+		column.custom_minimum_size = Vector2(0,160)
+		column.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		cards.append(column)
+		column.add_theme_constant_override("separation", 12)
+		card_grid.add_child(column)
 		var name_label := Label.new()
 		name_label.text = Roster.HEROES[id].name
 		name_label.add_theme_font_size_override("font_size", 24)
+		name_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 		column.add_child(name_label)
 		var description := Label.new()
 		description.text = Roster.HEROES[id].description
+		description.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 		column.add_child(description)
 		var weapon := Label.new()
-		weapon.text = Roster.HEROES[id].starter.display_name
+		weapon.text = Roster.HEROES[id].starter.display_name if Roster.HEROES[id].starter != null else "Weaponless · Swallow"
+		weapon.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 		column.add_child(weapon)
 		var button := Button.new()
 		button.custom_minimum_size.y = 52
@@ -75,14 +93,27 @@ func _ready() -> void:
 		buttons[id] = button
 	var footer := Label.new()
 	footer.text = "Shared combat · Each character keeps their own weapon durability"
+	footer.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(footer)
 	var close := Button.new()
+	close.name="CloseButton"
 	close.text = "Close"
 	close.custom_minimum_size.y = 48
 	_style_button(close)
 	close.pressed.connect(close_menu)
 	content.add_child(close)
 	overlay.hide()
+	resized.connect(_layout_cards)
+	_layout_cards.call_deferred()
+
+func _layout_cards() -> void:
+	if panel==null or card_grid==null: return
+	var viewport_size := get_viewport_rect().size
+	var width := maxf(240,minf(980,viewport_size.x-32))
+	panel.custom_minimum_size=Vector2(width,maxf(240,minf(620,viewport_size.y-32)))
+	card_grid.columns=2 if viewport_size.x>=680 else 1
+	var card_width := (width-48-(card_grid.columns-1)*16)/card_grid.columns
+	for card: Control in cards: card.custom_minimum_size.x=maxf(160,card_width)
 
 func _style_button(button: Button) -> void:
 	for state_name in ["normal", "hover", "pressed", "disabled", "focus"]:
@@ -104,6 +135,7 @@ func open_menu() -> void:
 	opened = true
 	overlay.show()
 	for id: String in buttons:
+		buttons[id].get_parent().visible=Services.game_state().is_character_available(id)
 		var active: bool = id == Services.game_state().active_character_id
 		buttons[id].text = "Active" if active else "Switch"
 		buttons[id].disabled = active
@@ -111,7 +143,7 @@ func open_menu() -> void:
 func select_character(id: String) -> bool:
 	if not opened or not is_instance_valid(hero) or hero.is_dead():
 		return false
-	if not Services.game_state().swap_character(id):
+	if not Services.game_state().is_character_available(id) or not Services.game_state().swap_character(id):
 		return false
 	close_menu()
 	return true
