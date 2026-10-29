@@ -8,6 +8,8 @@ var kind: Kind = Kind.KEY
 var floor_owner: Node = null
 
 func _ready() -> void:
+	if kind == Kind.KEY:
+		add_to_group(&"companion_pickups")
 	collision_layer = 128
 	collision_mask = 2
 	monitorable = false
@@ -49,3 +51,7 @@ func _physics_process(_delta: float) -> void:
 		for body in get_overlapping_bodies():
 			if try_activate(body):
 				break
+
+func try_companion_collect(body: Node3D) -> bool:
+	# An exit always requires the player to enter it intentionally.
+	return try_activate(body) if kind == Kind.KEY else false

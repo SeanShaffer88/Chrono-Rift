@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+<rect width="1280" height="720" fill="#21394c"/>
+<path d="M0 500L300 320 500 440 800 280 1280 460V720H0" fill="#405461"/>
+<rect width="1280" height="720" fill="#08131d" opacity=".65"/>
+<rect x="140" y="130" width="1000" height="460" rx="12" fill="#142432" stroke="#aac6ce" stroke-width="2"/>
+<g font-family="sans-serif" fill="#edf3f4">
+<text x="180" y="185" font-size="30">Characters</text>
+<text x="180" y="220" font-size="18" fill="#aac6ce">Switch here in the dungeon or town. Position and health stay unchanged.</text>
+<g fill="#203746" stroke="#6c8c9d"><rect x="180" y="250" width="290" height="240" rx="8"/><rect x="495" y="250" width="290" height="240" rx="8"/><rect x="810" y="250" width="290" height="240" rx="8"/></g>
+<text x="205" y="292" font-size="25">Adventurer</text><text x="520" y="292" font-size="25">Swordsman</text><text x="835" y="292" font-size="25">Rift Warden</text>
+<g font-size="19" fill="#bed1d8"><text x="205" y="335">Teal scarf · leather</text><text x="520" y="335">Silver hair · dark coat</text><text x="835" y="335">Ivory mask · crimson cape</text><text x="205" y="377">Battle Wrench</text><text x="520" y="377">Duskblade</text><text x="835" y="377">Crescent Chain</text></g>
+<g fill="#335868"><rect x="205" y="420" width="240" height="45" rx="4"/><rect x="520" y="420" width="240" height="45" rx="4"/><rect x="835" y="420" width="240" height="45" rx="4"/></g>
+<g font-size="20" text-anchor="middle"><text x="325" y="449">Active</text><text x="640" y="449">Switch</text><text x="955" y="449">Switch</text></g>
+<text x="180" y="548" font-size="18" fill="#aac6ce">Shared combat · Each character keeps their own weapon durability</text>
+<text x="1030" y="548" font-size="22">Close</text>
+<text x="640" y="675" text-anchor="middle" font-size="16" fill="#b6cbd6">UI layout mockup — character appearances shown in the separate roster concept.</text>
+</g></svg>

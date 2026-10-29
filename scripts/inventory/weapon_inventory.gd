@@ -10,6 +10,7 @@ const STARTER := preload("res://data/weapons/battle_wrench.tres")
 
 var _weapons: Array[Weapon] = []
 var _equipped: Weapon = null
+var is_session_active := true
 var equipped_weapon: Weapon:
 	get: return _equipped
 
@@ -89,13 +90,13 @@ func build_up(weapon: Weapon, branch_index: int) -> Weapon:
 		bus.weapon_built_up.emit(weapon, evolved)
 	return evolved
 
-func reset(with_starter: bool = true) -> void:
+func reset(with_starter: bool = true, starter_template: Resource = null) -> void:
 	for weapon in _weapons:
 		_disconnect_weapon(weapon)
 	_weapons.clear()
 	_equipped = null
 	if with_starter:
-		var starter := STARTER.duplicate(true) as Weapon
+		var starter := (starter_template if starter_template != null else STARTER).duplicate(true) as Weapon
 		_weapons.append(starter)
 		_connect_weapon(starter)
 		_equipped = starter
@@ -113,13 +114,13 @@ func _on_durability_changed(weapon: Weapon) -> void:
 func _emit_equipped() -> void:
 	equipped_changed.emit(_equipped)
 	var bus := Services.event_bus()
-	if bus:
+	if bus and is_session_active:
 		bus.weapon_equipped.emit(_equipped)
 	_emit_durability()
 
 func _emit_durability() -> void:
 	var bus := Services.event_bus()
-	if bus:
+	if bus and is_session_active:
 		bus.weapon_durability_changed.emit(_equipped.current_durability if _equipped else 0.0, _equipped.max_durability if _equipped else 0.0, _equipped.is_broken if _equipped else false)
 
 func _exit_tree() -> void:

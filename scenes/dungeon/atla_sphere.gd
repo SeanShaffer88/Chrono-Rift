@@ -9,6 +9,7 @@ const Factory := preload("res://scripts/utilities/primitive_mesh_factory.gd")
 var collected := false
 
 func _ready() -> void:
+	add_to_group(&"companion_pickups")
 	collision_layer = 128
 	collision_mask = 2
 	monitorable = false
@@ -42,6 +43,10 @@ func try_collect(body: Node3D) -> bool:
 		return false
 	_retire()
 	return true
+
+func try_companion_collect(body: Node3D) -> bool:
+	# Town parts are collectible even when the player is at full health.
+	return try_collect(body)
 
 func _retire() -> void:
 	collected = true

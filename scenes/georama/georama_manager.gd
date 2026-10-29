@@ -45,6 +45,9 @@ func _ready() -> void:
 	Services.game_state().set_mode(1)
 	_build_terrain()
 	_build_ui()
+	var characters := preload("res://scenes/ui/character_menu.gd").new()
+	characters.hero = $MeleeHero
+	_ui.add_child(characters)
 	_refresh()
 	set_editing(true)
 

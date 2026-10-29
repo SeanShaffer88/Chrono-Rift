@@ -15,6 +15,7 @@ const LAYER_ENEMY_HURTBOX := 7
 const SWING_ANGLE := 1.1
 const WeaponInventory := preload("res://scripts/inventory/weapon_inventory.gd")
 var weapon_inventory: Node = null
+var _uses_session_inventory := false
 
 ## Per-swing timings in seconds; lunge is forward speed during windup/active.
 const COMBO_STEPS := [
@@ -54,12 +55,29 @@ func _ready() -> void:
 		var state := Services.game_state()
 		if is_player and state:
 			weapon_inventory = state.weapon_inventory
+			_uses_session_inventory = true
 		else:
 			weapon_inventory = WeaponInventory.new()
 			add_child(weapon_inventory)
 			weapon_inventory.reset()
 	weapon_inventory.equipped_changed.connect(_on_weapon_equipped)
 	_on_weapon_equipped(weapon_inventory.equipped_weapon)
+	if _uses_session_inventory:
+		Services.event_bus().character_swapped.connect(_on_character_swapped)
+		_on_character_swapped(Services.game_state().active_character_id)
+
+func _on_character_swapped(id: String) -> void:
+	var changed := character_id != id
+	var inventory: Node = Services.game_state().weapon_inventory
+	if weapon_inventory != inventory:
+		weapon_inventory.equipped_changed.disconnect(_on_weapon_equipped)
+		weapon_inventory = inventory
+		weapon_inventory.equipped_changed.connect(_on_weapon_equipped)
+	character_id = id
+	$Visual.apply_character(id)
+	_on_weapon_equipped(weapon_inventory.equipped_weapon)
+	if changed:
+		_dodge_cooldown_left = maxf(_dodge_cooldown_left, dodge_cooldown)
 
 func _tick(delta: float) -> void:
 	if is_player:
@@ -216,6 +234,15 @@ func _on_weapon_equipped(weapon: Resource) -> void:
 	blade.mesh = shape
 	for jaw: Node3D in blade.get_children():
 		jaw.visible = wrench
+	var chain: Node3D = blade.get_node_or_null("ChainBlade")
+	if chain == null:
+		chain = preload("res://scripts/utilities/chain_weapon_visual.gd").make()
+		blade.add_child(chain)
+	chain.visible = weapon != null and weapon.weapon_id == "rift_chain"
+	if chain.visible:
+		blade.mesh = null
+	elif weapon != null and weapon.weapon_id == "duskblade":
+		shape.size = Vector3(0.11, 0.05, 1.35)
 
 func _animate_weapon() -> void:
 	if not is_instance_valid(weapon_pivot):

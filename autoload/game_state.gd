@@ -10,12 +10,23 @@ const MAX_THIRST := 100.0
 
 const Services := preload("res://scripts/utilities/services.gd")
 const WeaponInventory := preload("res://scripts/inventory/weapon_inventory.gd")
+const Roster = preload("res://data/characters/character_roster.gd")
 
 var weapon_inventory := WeaponInventory.new()
+var character_inventories: Dictionary = {}
 
 func _ready() -> void:
 	add_child(weapon_inventory)
 	weapon_inventory.reset()
+	character_inventories["melee_hero"] = weapon_inventory
+	for id: String in Roster.HEROES:
+		if id == "melee_hero":
+			continue
+		var inventory := WeaponInventory.new()
+		inventory.is_session_active = false
+		add_child(inventory)
+		inventory.reset(true, Roster.HEROES[id].starter)
+		character_inventories[id] = inventory
 
 @export var thirst_drain_per_second: float = 0.5
 
@@ -51,13 +62,19 @@ func set_mode(new_mode: Mode) -> void:
 	mode = new_mode
 	mode_changed.emit(mode)
 
-func swap_character(character_id: String) -> void:
+func swap_character(character_id: String) -> bool:
+	if not Roster.HEROES.has(character_id) or not character_inventories.has(character_id):
+		return false
 	if character_id == active_character_id:
-		return
+		return true
+	weapon_inventory.is_session_active = false
+	weapon_inventory = character_inventories[character_id]
+	weapon_inventory.is_session_active = true
 	active_character_id = character_id
 	var bus := Services.event_bus()
 	if bus:
 		bus.character_swapped.emit(character_id)
+	return true
 
 func drain_thirst(amount: float) -> void:
 	if amount <= 0.0 or thirst <= 0.0:
@@ -79,6 +96,7 @@ func has_atla(piece_id: String) -> bool:
 
 func reset() -> void:
 	mode = Mode.DUNGEON
+	var previous_character := active_character_id
 	active_character_id = "melee_hero"
 	thirst = MAX_THIRST
 	atla_inventory.clear()
@@ -86,7 +104,16 @@ func reset() -> void:
 	town_objects.clear()
 	town_services.clear()
 	town_completed = false
-	weapon_inventory.reset()
+	if not character_inventories.is_empty():
+		weapon_inventory = character_inventories["melee_hero"]
+		for id: String in character_inventories:
+			var inventory: Node = character_inventories[id]
+			inventory.is_session_active = id == active_character_id
+			inventory.reset(true, Roster.HEROES[id].starter)
+	else:
+		weapon_inventory.reset()
+	if previous_character != active_character_id and Services.event_bus():
+		Services.event_bus().character_swapped.emit(active_character_id)
 	_emit_thirst()
 
 func _emit_thirst() -> void:
