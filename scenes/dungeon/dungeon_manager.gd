@@ -2,12 +2,14 @@ extends Node3D
 
 const Floor := preload("res://scenes/dungeon/floor_generator.gd")
 @export var dungeon_seed: int = 1337
+@export var persistence_path: String = "user://saves/autosave.json"
 var floor_number := 1
 var floor_generator := Floor.new()
 var town_view: Node3D = null
 var _town_layer: CanvasLayer
 var _previous_process_mode: int
 var _defeat_ui: PanelContainer
+var save_session: Node
 
 func _ready() -> void:
 	add_child(floor_generator)
@@ -33,6 +35,23 @@ func _ready() -> void:
 	$TouchUI.add_child(button)
 	_build_defeat_ui()
 	$MeleeHero.died.connect(func(): _defeat_ui.show())
+	# Only the shipping main scene auto-loads user progress. Fixtures stay isolated.
+	if get_tree().current_scene == self:
+		start_saving.call_deferred(persistence_path)
+
+func start_saving(path: String = "user://saves/autosave.json") -> void:
+	if is_instance_valid(save_session): return
+	save_session = preload("res://scripts/persistence/save_session.gd").new()
+	add_child(save_session)
+	save_session.start(self, path)
+	var label := Label.new()
+	label.name = "SaveStatus"
+	label.position = Vector2(24, 100)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", 16)
+	label.text = save_session.status
+	save_session.status_changed.connect(func(text: String): label.text = text)
+	$TouchUI.add_child(label)
 
 func _build_defeat_ui() -> void:
 	_defeat_ui = PanelContainer.new()

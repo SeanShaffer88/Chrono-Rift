@@ -28,6 +28,7 @@ var guard_defeated := false
 var cleared := false
 var content: Node3D = null
 var guard: Node3D = null
+var collected_healing: Array[String] = []
 
 func generate(seed_value: int, number: int = 1, build_geometry: bool = true) -> bool:
 	var candidate := BSP.new()
@@ -40,6 +41,7 @@ func generate(seed_value: int, number: int = 1, build_geometry: bool = true) -> 
 	key_collected = false
 	guard_defeated = false
 	cleared = false
+	collected_healing.clear()
 	spawn_cell = layout.rooms[0].get_center()
 	var distances := layout.distances_from(spawn_cell)
 	exit_cell = _farthest_room(distances, [spawn_cell])
@@ -137,6 +139,8 @@ func _build_content() -> void:
 		if not layout.walkable.has(cell) or cell in [spawn_cell, key_cell, guard_cell, exit_cell] or orb_cells.has(cell):
 			continue
 		var healing := Healing.new()
+		healing.floor_owner = self
+		healing.pickup_id = "%d:%d" % [cell.x, cell.y]
 		healing.position = cell_to_world(cell)
 		content.add_child(healing)
 	var light_count := 0
@@ -212,6 +216,25 @@ func _create_guard() -> CharacterBody3D:
 func _on_guard_hit(_damage: int, hp: int) -> void:
 	if hp == 0:
 		guard_defeated = true
+
+func progress_snapshot() -> Dictionary:
+	return {"key": key_collected, "guard_defeated": guard_defeated, "guard_hp": guard.current_hp if is_instance_valid(guard) else (0 if guard_defeated else 60), "healing": collected_healing.duplicate()}
+
+func restore_progress(record: Dictionary) -> void:
+	key_collected = record.key
+	guard_defeated = record.guard_defeated
+	collected_healing.assign(record.healing)
+	if is_instance_valid(guard):
+		if guard_defeated:
+			guard.receive_hit(guard.max_hp, self)
+		else:
+			guard.current_hp = int(record.guard_hp)
+	if content != null:
+		if key_collected:
+			content.get_node("GateKey").free()
+		for child: Node in content.get_children():
+			if child is Healing and collected_healing.has(child.pickup_id):
+				child.free()
 
 func find_guard_path(from: Vector3, destination: Vector3) -> Array[Vector3]:
 	var start := Vector2i(roundi(from.x / CELL_SIZE), roundi(from.z / CELL_SIZE))
