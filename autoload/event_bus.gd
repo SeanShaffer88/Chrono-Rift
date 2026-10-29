@@ -1,6 +1,6 @@
 extends Node
-## Global signal hub. Emitters must guard with `if is_instance_valid(EventBus):`
-## so scenes also run in test harnesses where autoloads are not in the tree yet.
+## Global signal hub. Emitters fetch it with Services.event_bus() and skip the emit
+## when it returns null, so scenes also run in headless test harnesses.
 
 # --- Combat & Character ---
 signal player_damaged(current_hp: int, max_hp: int)

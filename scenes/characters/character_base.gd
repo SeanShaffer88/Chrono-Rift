@@ -10,6 +10,8 @@ const LAYER_ENVIRONMENT := 1
 const LAYER_PLAYER := 2
 const LAYER_ENEMIES := 3
 
+const Services := preload("res://scripts/utilities/services.gd")
+
 @export var character_id: String = "character"
 @export var is_player: bool = true
 @export var max_hp: int = 100
@@ -197,8 +199,9 @@ func _set_lock_target(target: Node3D) -> void:
 	if target == lock_target:
 		return
 	lock_target = target
-	if is_player and is_instance_valid(EventBus):
-		EventBus.soft_lock_target_changed.emit(lock_target)
+	var bus := Services.event_bus()
+	if is_player and bus:
+		bus.soft_lock_target_changed.emit(lock_target)
 
 ## Instantly points the character at a direction on the XZ plane.
 func face_direction(dir: Vector3) -> void:
@@ -232,8 +235,9 @@ func take_damage(amount: int) -> bool:
 		return false
 	current_hp = maxi(0, current_hp - amount)
 	hp_changed.emit(current_hp, max_hp)
-	if is_player and is_instance_valid(EventBus):
-		EventBus.player_damaged.emit(current_hp, max_hp)
+	var bus := Services.event_bus()
+	if is_player and bus:
+		bus.player_damaged.emit(current_hp, max_hp)
 	if current_hp == 0:
 		died.emit()
 	return true

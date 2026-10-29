@@ -20,13 +20,19 @@
     *   No binary scene or project dependencies. All scenes (`.tscn`), resources (`.tres`), and scripts (`.gd`) are plain text.
     *   Zero external asset blockers: All geometry, characters, items, and structures generate procedurally via `PrimitiveMeshFactory` using standard flat-shaded materials until custom `.glb` meshes are dropped into `assets/`.
 *   **Decoupled Signal Infrastructure:**
-    *   Autoloads (`EventBus`, `GameState`) are globally accessible, but all event-emitting scripts must guard access (`if is_instance_valid(EventBus):`) so scenes can be instantiated in test harnesses without requiring autoload initialization.
+    *   Autoloads (`EventBus`, `GameState`) are never referenced by bare identifier: under `godot -s` (the test harness) Godot 4.3 does not register autoload names, so `EventBus` fails to compile. Scripts fetch them through `scripts/utilities/services.gd` and skip the emit when it returns null:
+        ```gdscript
+        const Services := preload("res://scripts/utilities/services.gd")
+        var bus := Services.event_bus()
+        if bus:
+            bus.weapon_broken.emit(self)
+        ```
 *   **Headless Test Harness:**
     *   All unit and integration tests live in `tests/` and extend `SceneTree`.
     *   Tests run via `godot --headless --path . -s tests/<test_script>.gd` and conclude by calling `quit(0)` on success or `quit(1)` on assertion failure.
     *   **Import first.** `class_name` globals only resolve from the `.godot/` cache, so run `godot --headless --path . --editor --quit` once on a fresh checkout (locally and in CI) before any `-s` test.
     *   **Prefer path references between scripts** (`extends "res://..."`, `preload("res://...")`) over `class_name` globals, so scripts still resolve if the cache is stale.
-    *   **Autoload timing.** When a `SceneTree` script's `_init()` runs, autoloads are not yet in the tree (`EventBus` reads as null). Tests therefore only schedule work in `_init()` and run assertions one frame later (see Section 4).
+    *   **Autoload timing.** When a `SceneTree` script's `_init()` runs, autoloads are not yet in the tree (`Services.event_bus()` returns null). Tests therefore only schedule work in `_init()` and run assertions one frame later (see Section 4).
     *   Always wrap test runs in a timeout (e.g. `timeout 120 godot ...`) so a test that never calls `quit()` cannot hang CI.
 
 ---
@@ -85,6 +91,7 @@ chrono_rift/
 │       └── georama_dock.tscn
 ├── scripts/
 │   ├── utilities/
+│   │   ├── services.gd              # Null-safe autoload lookup (Services.event_bus())
 │   │   ├── primitive_mesh_factory.gd # Procedural primitive mesh generator
 │   │   └── bsp_tree.gd              # Pure data structure for 2D room splitting
 │   └── combat/
@@ -151,6 +158,8 @@ signal town_restoration_completed()
 class_name WeaponData
 extends Resource
 
+const Services := preload("res://scripts/utilities/services.gd")
+
 enum ElementType { NONE, FIRE, ICE, THUNDER, WIND, HOLY }
 enum SlayerType { NONE, BEAST, UNDEAD, MAGE, SKY, MIMIC, METAL, AQUATIC }
 
@@ -195,17 +204,21 @@ func apply_degradation(amount: float) -> void:
 	current_durability = maxf(0.0, current_durability - amount)
 	if current_durability <= 0.0:
 		is_broken = true
-		if is_instance_valid(EventBus):
-			EventBus.weapon_broken.emit(self)
-	if is_instance_valid(EventBus):
-		EventBus.weapon_durability_changed.emit(current_durability, max_durability, is_broken)
+		var bus := Services.event_bus()
+		if bus:
+			bus.weapon_broken.emit(self)
+	_emit_durability()
 
 func repair(amount: float) -> void:
 	current_durability = minf(max_durability, current_durability + amount)
 	if current_durability > 0.0:
 		is_broken = false
-	if is_instance_valid(EventBus):
-		EventBus.weapon_durability_changed.emit(current_durability, max_durability, is_broken)
+	_emit_durability()
+
+func _emit_durability() -> void:
+	var bus := Services.event_bus()
+	if bus:
+		bus.weapon_durability_changed.emit(current_durability, max_durability, is_broken)
 
 func can_build_up(branch_index: int) -> bool:
 	if branch_index < 0 or branch_index >= build_up_branches.size():
@@ -339,7 +352,7 @@ Execute Phase 1 with 100% complete, un-truncated GDScript and .tscn text files m
 - tests/test_phase1_smoke.gd (Headless test script extending SceneTree, verifying scene loads, joystick vector processing, combo/dodge state machine, and signal registrations, ending with quit(0))
 
 CRITICAL CONSTRAINTS:
-1. Wrap all EventBus emissions in safety checks (e.g. `if is_instance_valid(EventBus):`) so scenes run cleanly in isolation during tests.
+1. Never reference autoloads by bare name; fetch them with scripts/utilities/services.gd (Services.event_bus()) and skip the emit when it returns null, so scenes run under `godot -s` tests.
 2. In character_base.gd, use SpringArm3D for the third-person camera. Do not write custom raycast collision rigs.
 3. No external binary assets. Generate temporary meshes using BoxMesh/CapsuleMesh directly in code or scene files.
 4. In tests/test_phase1_smoke.gd, follow the Section 4 template: schedule from _init(), assert after one frame, call quit(0) on success or quit(1) on failure.

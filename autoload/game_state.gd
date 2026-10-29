@@ -8,6 +8,8 @@ signal thirst_depleted
 
 const MAX_THIRST := 100.0
 
+const Services := preload("res://scripts/utilities/services.gd")
+
 @export var thirst_drain_per_second: float = 0.5
 
 var mode: Mode = Mode.DUNGEON
@@ -29,8 +31,9 @@ func swap_character(character_id: String) -> void:
 	if character_id == active_character_id:
 		return
 	active_character_id = character_id
-	if is_instance_valid(EventBus):
-		EventBus.character_swapped.emit(character_id)
+	var bus := Services.event_bus()
+	if bus:
+		bus.character_swapped.emit(character_id)
 
 func drain_thirst(amount: float) -> void:
 	if amount <= 0.0 or thirst <= 0.0:
@@ -58,5 +61,6 @@ func reset() -> void:
 	_emit_thirst()
 
 func _emit_thirst() -> void:
-	if is_instance_valid(EventBus):
-		EventBus.thirst_changed.emit(thirst, MAX_THIRST)
+	var bus := Services.event_bus()
+	if bus:
+		bus.thirst_changed.emit(thirst, MAX_THIRST)
