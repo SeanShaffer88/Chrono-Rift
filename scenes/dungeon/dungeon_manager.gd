@@ -12,6 +12,9 @@ func _ready() -> void:
 	add_child(floor_generator)
 	floor_generator.exit_reached.connect(_queue_next_floor)
 	_load_floor()
+	var hud := preload("res://scenes/ui/adventure_hud.gd").new()
+	hud.hero = $MeleeHero
+	$TouchUI.add_child(hud)
 	var button := Button.new()
 	button.text = "Town / Georama"
 	button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)

@@ -49,8 +49,8 @@ func _ready() -> void:
 	set_editing(true)
 
 func _build_terrain() -> void:
-	Visuals.box(self, Vector3(128, 0.2, 128), Vector3(63, -0.1, 63), Color(0.32, 0.42, 0.23), true)
-	Visuals.box(self, Vector3(6, 0.03, 128), Vector3(50, 0.01, 63), Color(0.12, 0.39, 0.55))
+	Visuals.box(self, Vector3(128, 0.2, 128), Vector3(63, -0.1, 63), Color(0.36, 0.55, 0.24), true)
+	Visuals.box(self, Vector3(6, 0.03, 128), Vector3(50, 0.01, 63), Color(0.12, 0.56, 0.72))
 	$CameraPivot.position = Vector3(64, 0, 64)
 	$MeleeHero.position = Vector3(62, 0.1, 70)
 	_update_camera()

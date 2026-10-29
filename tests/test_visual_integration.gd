@@ -1,0 +1,31 @@
+extends "res://tests/test_harness_template.gd"
+const Scenery = preload("res://scripts/utilities/scenery.gd")
+const Floor = preload("res://scenes/dungeon/floor_generator.gd")
+
+func run_assertions() -> void:
+	var holder := Node3D.new()
+	root.add_child(holder)
+	for key in Scenery.MODELS:
+		var model := Scenery.add(holder, key, Vector3.ZERO)
+		check(model.find_children("*", "MeshInstance3D", true, false).size() > 0, "Imported %s has renderable geometry" % key)
+		check(model.find_children("*", "CollisionObject3D", true, false).is_empty(), "Scenery %s cannot obstruct traversal" % key)
+	var hero = load("res://scenes/characters/melee_hero.tscn").instantiate()
+	holder.add_child(hero)
+	check(not hero.get_node("Visual/Body").visible, "Player capsule is replaced by character art")
+	check(is_equal_approx(hero.get_node("CollisionShape3D").shape.height, 1.8), "Character art preserves player collision")
+	hero.velocity = Vector3(6, 0, 0)
+	hero.get_node("Visual")._process(0.1)
+	check(absf(hero.get_node("Visual/Leg-1").rotation.x) > 0.0, "Moving hero animates legs")
+	hero.velocity = Vector3.ZERO
+	hero.get_node("Visual")._process(0.1)
+	check(is_zero_approx(hero.get_node("Visual/Leg-1").rotation.x), "Stationary hero returns legs to rest")
+	check(hero.get_node("Visual/WeaponPivot/Blade/JawLeft").visible, "Starter weapon shows wrench jaws")
+	hero._on_weapon_equipped(load("res://data/weapons/gladius.tres"))
+	check(not hero.get_node("Visual/WeaponPivot/Blade/JawLeft").visible, "Evolved sword does not retain wrench jaws")
+	var floor := Floor.new()
+	holder.add_child(floor)
+	check(floor.generate(1337), "Decorated dungeon builds")
+	check(floor.guard.get_node("Body").mesh is BoxMesh, "Dungeon guard uses chunky character geometry")
+	check(floor.guard.receive_hit(999, hero), "Decorated guard still receives combat hits")
+	check(floor.guard_defeated and not floor.guard.visible, "All guard art hides on defeat and gate unlocks")
+	holder.free()
