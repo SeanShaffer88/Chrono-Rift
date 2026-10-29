@@ -7,7 +7,7 @@ const Factory := preload("res://scripts/utilities/primitive_mesh_factory.gd")
 const Orb := preload("res://scenes/dungeon/atla_sphere.gd")
 const Pickup := preload("res://scenes/dungeon/dungeon_pickup.gd")
 const Healing = preload("res://scenes/dungeon/healing_pickup.gd")
-const Dummy := preload("res://scenes/characters/training_dummy.gd")
+const Guard := preload("res://scenes/characters/dungeon_guard.gd")
 const Services := preload("res://scripts/utilities/services.gd")
 const CELL_SIZE := 2.0
 const TownGrid := preload("res://scenes/georama/town_grid.gd")
@@ -179,10 +179,14 @@ func _add_collision(body: StaticBody3D, size: Vector3, position_value: Vector3) 
 	body.add_child(collision)
 
 func _create_guard() -> CharacterBody3D:
-	var body := Dummy.new()
+	var body := Guard.new()
+	body.floor_owner = self
+	for offset in [Vector2i.ZERO, Vector2i(0, 2), Vector2i(2, 0)]:
+		if layout.walkable.has(guard_cell + offset):
+			body.patrol_points.append(cell_to_world(guard_cell + offset))
 	body.respawn_delay = 1e20
 	body.collision_layer = 4
-	body.collision_mask = 1
+	body.collision_mask = 7
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.45
 	shape.height = 1.8
@@ -228,6 +232,28 @@ func _create_guard() -> CharacterBody3D:
 func _on_guard_hit(_damage: int, hp: int) -> void:
 	if hp == 0:
 		guard_defeated = true
+
+func find_guard_path(from: Vector3, destination: Vector3) -> Array[Vector3]:
+	var start := Vector2i(roundi(from.x / CELL_SIZE), roundi(from.z / CELL_SIZE))
+	var goal := Vector2i(roundi(destination.x / CELL_SIZE), roundi(destination.z / CELL_SIZE))
+	var route: Array[Vector3] = []
+	if not layout.walkable.has(start) or not layout.walkable.has(goal):
+		return route
+	var distances := layout.distances_from(goal)
+	var cell := start
+	while cell != goal:
+		var next := cell
+		for direction: Vector2i in BSP.DIRECTIONS:
+			var neighbor := cell + direction
+			if distances.get(neighbor, INF) < distances.get(next, INF):
+				next = neighbor
+		if next == cell:
+			return []
+		route.append(cell_to_world(next))
+		cell = next
+	if route.is_empty():
+		route.append(destination)
+	return route
 
 func try_collect_key(body: Node3D) -> bool:
 	if not Orb.is_collector(body) or not guard_defeated or key_collected or cleared:

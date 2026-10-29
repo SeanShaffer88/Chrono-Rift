@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+<rect width="1280" height="720" fill="#192e43"/><path d="M0 260H1280V720H0" fill="#455463"/>
+<g stroke="#273d50" stroke-width="3"><path d="M0 430H1280M0 560H1280M200 260L0 720M470 260L420 720M800 260L860 720M1100 260L1280 720"/></g>
+<g font-family="sans-serif" fill="#edf3f4"><text x="32" y="45" font-size="28">Combat + camera — layout mockup</text><text x="32" y="82" font-size="18">Existing art direction · clear windup · grounded melee · right-thumb camera drag</text></g>
+<path d="M730 355L620 520Q730 575 840 520Z" fill="#d99b36" opacity=".45" stroke="#f6c571" stroke-width="4"/>
+<rect x="700" y="270" width="65" height="95" fill="#64472e"/><rect x="693" y="222" width="80" height="60" fill="#7c9e36"/>
+<g stroke="#edc175" stroke-width="3" fill="none"><path d="M681 220V205H699M766 205H784V220M681 279V294H699M766 294H784V279"/></g>
+<text x="730" y="190" fill="#ffce72" font-family="sans-serif" font-size="40">!</text>
+<rect x="500" y="417" width="75" height="108" fill="#80502e"/><rect x="493" y="352" width="86" height="75" fill="#493026"/><path d="M490 421H581L560 456H503" fill="#1796b6"/>
+<g fill="none" stroke="#9fbbc8" stroke-width="3"><circle cx="170" cy="580" r="75"/><circle cx="170" cy="580" r="28"/><circle cx="1160" cy="580" r="53"/><circle cx="1045" cy="625" r="40"/><circle cx="1170" cy="450" r="40"/><circle cx="1075" cy="450" r="40"/><path d="M925 310H1130M925 310L945 300M925 310L945 320M1130 310L1110 300M1130 310L1110 320"/></g>
+<g font-family="sans-serif" fill="#edf3f4" text-anchor="middle"><text x="1160" y="587" font-size="20">ATK</text><text x="1045" y="632" font-size="15">DODGE</text><text x="1170" y="456" font-size="15">LOCK</text><text x="1075" y="456" font-size="15">NEXT</text><text x="1030" y="280" font-size="18">Drag empty right side to orbit / tilt</text></g>
+<rect x="28" y="135" width="330" height="150" rx="8" fill="#142432" stroke="#aac6ce"/>
+<g font-family="sans-serif" fill="#edf3f4"><text x="50" y="172" font-size="21">Defeat overlay (when needed)</text><text x="50" y="205" font-size="18">Defeated</text><rect x="50" y="222" width="285" height="44" fill="#335868"/><text x="128" y="251" font-size="20">Retry floor</text><text x="28" y="687" font-size="17">Retry restores HP; collected town parts and weapon wear remain. Amber warning disappears on stagger/death.</text></g>
+</svg>

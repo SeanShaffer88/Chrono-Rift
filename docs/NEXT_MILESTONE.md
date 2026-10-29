@@ -1,7 +1,8 @@
 # Next milestone: enemy combat and camera feel
 
 User approved this priority after the visual, playable roster and collector pass.
-Status: planned; finish and publish current regression fixes before implementation.
+Status: implemented; regression and Android validation results are documented in
+COMBAT_CAMERA.md and the release notes.
 
 ## Playable combat slice
 

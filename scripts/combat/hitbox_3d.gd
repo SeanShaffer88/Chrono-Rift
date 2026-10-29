@@ -2,6 +2,7 @@ extends Area3D
 ## One acknowledged hit per receiver per active window; rejected hits may retry.
 
 var active := false
+const Sight = preload("res://scripts/combat/combat_visibility.gd")
 var _hit_targets: Dictionary = {}
 
 func set_active(value: bool) -> void:
@@ -15,6 +16,8 @@ func set_active(value: bool) -> void:
 func try_hit(area: Area3D, source: Node, damage: int, elements: Dictionary = {}, slayers: Dictionary = {}) -> Node:
 	if not active or damage <= 0 or not is_instance_valid(area):
 		return null
+	if is_instance_valid(source) and source.has_method("is_alive") and not source.is_alive():
+		return null
 	var target: Node = area
 	if not target.has_method("receive_weapon_hit") and not target.has_method("receive_hit") and not target.has_method("take_damage"):
 		target = area.get_parent()
@@ -24,6 +27,8 @@ func try_hit(area: Area3D, source: Node, damage: int, elements: Dictionary = {},
 	if target == area and (area.get_parent().has_method("take_damage") or area.get_parent().has_method("receive_hit")):
 		receiver = area.get_parent()
 	var id := receiver.get_instance_id()
+	if source is Node3D and receiver is Node3D and not Sight.clear_between(source, receiver):
+		return null
 	if _hit_targets.has(id):
 		return null
 	# Reserve before calling receivers: damage signals can reenter this method.
