@@ -138,7 +138,7 @@ func tick_brain(delta: float) -> void:
 			club.rotation.x = 0.8
 			# Rejected dodge hits may retry inside this window; accepted hits dedup.
 			for id: int in attack_contacts:
-				var area: Area3D = attack_contacts[id]
+				var area = attack_contacts[id]
 				if is_instance_valid(area):
 					try_attack_hit(area)
 			if state_time >= ACTIVE_TIME:
@@ -204,13 +204,13 @@ func _set_state(value: State) -> void:
 		velocity = Vector3.ZERO
 
 func _on_attack_entered(area: Area3D) -> void:
-	if state != State.ACTIVE or not is_alive():
+	if state != State.ACTIVE or not is_alive() or not is_instance_valid(area):
 		return
 	attack_contacts[area.get_instance_id()] = area
 	try_attack_hit(area)
 
 func try_attack_hit(area: Area3D) -> bool:
-	if state != State.ACTIVE or not is_alive():
+	if state != State.ACTIVE or not is_alive() or not is_instance_valid(area):
 		return false
 	var receiver := area.get_parent() as Node3D
 	if not valid_player(receiver):

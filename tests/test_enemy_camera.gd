@@ -47,6 +47,13 @@ func run_assertions() -> void:
 	check(hero.current_hp == 88, "Actual enemy Area overlap deals one acknowledged hit")
 	check(health_events == [Vector2i(88, 100)], "Enemy hit emits exactly one health signal with current/max payload")
 	check(not guard.try_attack_hit(hero.get_node("Hurtbox")) and hero.current_hp == 88, "Active window cannot double-hit a player")
+	check(not guard.try_attack_hit(null), "Enemy damage rejects a missing hurtbox")
+	var stale := Area3D.new()
+	root.add_child(stale)
+	guard.attack_contacts[stale.get_instance_id()] = stale
+	stale.free()
+	guard.tick_brain(0.01)
+	check(hero.current_hp == 88, "Freed overlap receiver is skipped safely during active attack")
 	guard.tick_brain(Enemy.ACTIVE_TIME)
 	check(guard.state == Enemy.State.RECOVERY and not guard.attack_box.active, "Active damage stops on recovery")
 	guard.tick_brain(Enemy.RECOVERY_TIME)
