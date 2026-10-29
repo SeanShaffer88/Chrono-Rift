@@ -6,7 +6,7 @@ signal equipped_changed(weapon: Resource)
 
 const Weapon := preload("res://data/weapons/weapon_data.gd")
 const Services := preload("res://scripts/utilities/services.gd")
-const STARTER := preload("res://data/weapons/battle_wrench.tres")
+const STARTER := preload("res://data/weapons/trail_sword.tres")
 
 var _weapons: Array[Weapon] = []
 var _equipped: Weapon = null

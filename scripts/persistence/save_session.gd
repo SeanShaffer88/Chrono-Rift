@@ -91,9 +91,7 @@ func _restore_actor(hero: Node3D, record: Dictionary, town: bool) -> void:
 	hero.velocity = Vector3.ZERO
 	hero.current_hp = int(record.hp)
 	hero.face_direction(Data.unpack_vector(record.facing))
-	hero.camera_pivot.rotation.y = float(record.yaw)
-	hero.camera_rig.preferred_pitch = float(record.pitch)
-	hero.camera_rig.snap()
+	hero.camera_rig.restore_view(float(record.yaw),float(record.pitch))
 	hero.hp_changed.emit(hero.current_hp, hero.max_hp)
 
 func _set_status(text: String) -> void:

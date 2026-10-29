@@ -92,8 +92,9 @@ func _build_content() -> void:
 			var neighbor := cell + direction
 			if not layout.walkable.has(neighbor):
 				walls[neighbor] = true
-	EnvironmentArt.dungeon(content, layout.walkable, floor_seed)
-	preload("res://scenes/environment/dungeon_landmarks.gd").build(content,layout.rooms,layout.walkable,floor_seed)
+	var biome := preload("res://scripts/utilities/dungeon_biomes.gd").for_floor(floor_number)
+	EnvironmentArt.dungeon(content, layout.walkable, floor_seed,biome)
+	preload("res://scenes/environment/dungeon_landmarks.gd").build(content,layout.rooms,layout.walkable,floor_seed,biome)
 	var solid := StaticBody3D.new()
 	solid.collision_layer = 1
 	solid.collision_mask = 0
@@ -166,6 +167,7 @@ func _add_collision(body: StaticBody3D, size: Vector3, position_value: Vector3) 
 func _create_guard() -> CharacterBody3D:
 	var body := Guard.new()
 	body.floor_owner = self
+	body.art_biome = preload("res://scripts/utilities/dungeon_biomes.gd").for_floor(floor_number)
 	for offset in [Vector2i.ZERO, Vector2i(0, 2), Vector2i(2, 0)]:
 		if layout.walkable.has(guard_cell + offset):
 			body.patrol_points.append(cell_to_world(guard_cell + offset))
@@ -187,21 +189,6 @@ func _create_guard() -> CharacterBody3D:
 	visual.position.y = 0.9
 	visual.name = "Body"
 	body.add_child(visual)
-	for side in [-1, 1]:
-		var boot := Factory.create_box(Vector3(0.3, 0.55, 0.42), Color("39322e"))
-		boot.position = Vector3(side * 0.22, -0.6, 0)
-		visual.add_child(boot)
-		var ear := Factory.create_box(Vector3(0.32, 0.18, 0.25), Color("7c9e36"))
-		ear.position = Vector3(side * 0.49, 0.6, 0)
-		ear.rotation.z = side * 0.3
-		visual.add_child(ear)
-	var head := Factory.create_box(Vector3(0.8, 0.6, 0.65), Color("7c9e36"))
-	head.position.y = 0.65
-	visual.add_child(head)
-	for side in [-1, 1]:
-		var eye := Factory.create_box(Vector3(0.13, 0.08, 0.03), Color("ffd35e"), 0.5)
-		eye.position = Vector3(side * 0.2, 0.7, -0.34)
-		visual.add_child(eye)
 	var hurtbox := Area3D.new()
 	hurtbox.name = "Hurtbox"
 	hurtbox.collision_layer = 64

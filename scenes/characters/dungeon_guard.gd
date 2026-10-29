@@ -49,6 +49,8 @@ func _ready() -> void:
 	attack_box.area_entered.connect(_on_attack_entered)
 	attack_box.area_exited.connect(func(area: Area3D): attack_contacts.erase(area.get_instance_id()))
 	club = Factory.create_box(Vector3(0.16, 0.16, 0.85), Color("73533a"))
+	club.mesh = preload("res://scripts/utilities/enemy_art.gd").club_mesh()
+	club.material_override = preload("res://scripts/utilities/paper_geometry.gd").material(Color.WHITE)
 	club.position = Vector3(0.5, 1.0, -0.6)
 	add_child(club)
 	_build_warning()

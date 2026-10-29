@@ -8,6 +8,7 @@ signal hit_received(damage: int, current_hp: int)
 @export var respawn_delay: float = 2.0
 @export var flash_color: Color = Color(1.0, 0.35, 0.3)
 
+var art_biome := "foundry"
 var current_hp: int
 var _flash_time := 0.0
 var _respawn_time := 0.0
@@ -24,6 +25,7 @@ func _ready() -> void:
 	current_hp = max_hp
 	_body_layer = collision_layer
 	_hurtbox_layer = $Hurtbox.collision_layer
+	preload("res://scripts/utilities/enemy_art.gd").apply(_body_mesh,art_biome,not has_method("tick_brain"))
 	# Each dummy flashes independently, so it owns its material.
 	_material = (_body_mesh.material_override as StandardMaterial3D).duplicate()
 	_body_mesh.material_override = _material

@@ -49,8 +49,15 @@ func run_assertions() -> void:
 			break
 	check(healing != null and healing.try_companion_collect(hero), "Real healing pickup records its collection")
 	hero.current_hp = 67
+	hero.camera_rig.restore_view(0.63,deg_to_rad(-60))
+	var legacy_inventory: Node = state.character_inventories.melee_hero
+	var legacy: Resource = legacy_inventory.add_weapon(preload("res://data/weapons/battle_wrench.tres"))
+	legacy.apply_degradation(7)
+	legacy_inventory.equip(legacy)
 	var data: Dictionary = JSON.parse_string(JSON.stringify(Data.capture(state, dungeon)))
 	check(Data.validate(data), "Full JSON round trip validates inventories, multipart town and floor progress")
+	check(data.inventories.melee_hero.weapons[0].id=="trail_sword" and data.inventories.melee_hero.weapons[1].id=="battle_wrench","Snapshot preserves new starter and legacy wrench together")
+	check(data.inventories.swordsman.weapons[0].id=="duskblade" and data.inventories.riftwarden.weapons[0].id=="rift_chain","Display renaming retains saved weapon IDs")
 	var store := Store.new(path, Data.validate)
 	check(store.read_save().status == "missing", "Missing save starts a new session")
 	check(store.write_save(data) == OK and FileAccess.file_exists(path + ".bak"), "First durable write creates a recovery backup")
@@ -83,6 +90,9 @@ func run_assertions() -> void:
 	malformed.inventories.riftwarden.equipped = 99
 	check(not Data.validate(malformed), "Invalid equipped index is rejected")
 	malformed = data.duplicate(true)
+	malformed.hero.pitch=deg_to_rad(-61)
+	check(not Data.validate(malformed),"Pitch precision tolerance cannot admit an out-of-range camera angle")
+	malformed=data.duplicate(true)
 	malformed.thirst = INF
 	check(not Data.validate(malformed), "Nonfinite numbers are rejected")
 	malformed = data.duplicate(true)
@@ -99,6 +109,8 @@ func run_assertions() -> void:
 	check(store.write_save(data) == OK, "Valid test save is ready for actual scene restoration")
 	state.reset()
 	dungeon.start_saving(path)
+	check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),0.63) and is_equal_approx(hero.camera_rig.preferred_pitch,deg_to_rad(-60)),"Actual scene load restores intended yaw and -60-degree manual pitch")
+	check(state.character_inventories.melee_hero.equipped_weapon.weapon_id=="battle_wrench" and is_equal_approx(state.character_inventories.melee_hero.equipped_weapon.current_durability,53),"Actual load retains legacy wrench selection and wear alongside new starter")
 	check(state.active_character_id == "riftwarden" and state.thirst == 42.5, "Active character and thirst restore")
 	check(state.weapon_inventory.equipped_weapon.is_broken and not state.weapon_inventory.equipped_weapon.destroy_on_break, "Broken protected starter remains owned and equipped")
 	check(state.weapon_inventory.equipped_weapon.base_attack == 29 and state.weapon_inventory.equipped_weapon.elemental_stats[1] == 8 and state.weapon_inventory.equipped_weapon.slayer_stats[2] == 4, "Trained attack and integer-key elemental/slayer stats restore")

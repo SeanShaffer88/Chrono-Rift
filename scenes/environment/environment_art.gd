@@ -13,7 +13,8 @@ static func river() -> ShaderMaterial:
 		river_material.shader = preload("res://assets/shaders/river_surface.gdshader")
 	return river_material
 
-static func dungeon(parent: Node3D, walkable: Dictionary, seed_value: int) -> void:
+static func dungeon(parent: Node3D, walkable: Dictionary, seed_value: int, biome: String = "foundry") -> void:
+	biome = preload("res://scripts/utilities/dungeon_biomes.gd").normalized(biome)
 	var root := Node3D.new()
 	root.name = "EnvironmentArt"
 	parent.add_child(root)
@@ -23,9 +24,10 @@ static func dungeon(parent: Node3D, walkable: Dictionary, seed_value: int) -> vo
 	root.add_child(Assets.batch("wall", plan.walls))
 	root.add_child(Assets.batch("wall_detail", plan.details))
 	root.add_child(Assets.batch("pier", plan.piers))
-	_flagstones(root,walkable,seed_value)
-	_masonry(root, walkable, seed_value)
-	_rock_backing(root,walkable,seed_value)
+	_flagstones(root,walkable,seed_value,biome)
+	_masonry(root, walkable, seed_value,biome)
+	_rock_backing(root,walkable,seed_value,biome)
+	_region_details(root,walkable,seed_value,biome)
 
 static func paving_layout(walkable: Dictionary, seed_value: int) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -43,14 +45,16 @@ static func paving_layout(walkable: Dictionary, seed_value: int) -> Array[Dictio
 const GROUT_TOP := 0.040
 const BACKING_ROOF := 2.25
 
-static func _flagstones(parent: Node3D,walkable: Dictionary,seed_value: int) -> void:
+static func _flagstones(parent: Node3D,walkable: Dictionary,seed_value: int,biome: String = "foundry") -> void:
 	# Opaque quiet grout hides source-floor pattern through narrow slab gaps.
 	var grout := Bake.new()
 	for cell: Vector2i in walkable:
-		grout.box(Vector3(2,0.002,2),Vector3(cell.x*2,GROUT_TOP-0.001,cell.y*2),Color("95866f"))
+		grout.box(Vector3(2,0.002,2),Vector3(cell.x*2,GROUT_TOP-0.001,cell.y*2),(Color("c3d8d4") if biome == "frost" else Color("7d8973") if biome == "overgrown_rail" else Color("95866f")))
 	grout.finish(parent,"QuietGrout")
 	var bake := Bake.new()
-	for slab: Dictionary in paving_layout(walkable,seed_value): bake.box(slab.size,slab.at,slab.color)
+	for slab: Dictionary in paving_layout(walkable,seed_value):
+		var tone: Color = Color("becfc9").lightened((int(slab.at.x)%5)*0.012) if biome == "frost" else Color("859080") if biome == "overgrown_rail" else slab.color
+		bake.box(slab.size,slab.at,tone)
 	bake.finish(parent,"InsetFlagstones")
 
 static func backing_runs(walkable: Dictionary) -> Array[Rect2i]:
@@ -100,11 +104,12 @@ static func rock_cap_layout(walkable: Dictionary,seed_value: int) -> Array[Dicti
 			result.append({"cell":cell,"corners":points,"peak":peak,"shade":key})
 	return result
 
-static func _rock_backing(parent: Node3D,walkable: Dictionary,seed_value: int) -> void:
+static func _rock_backing(parent: Node3D,walkable: Dictionary,seed_value: int,biome: String = "foundry") -> void:
+	var slate := Color("9db9bd") if biome == "frost" else Color("405849") if biome == "overgrown_rail" else Color("35464f")
 	var bake := Bake.new()
 	var runs := backing_runs(walkable)
 	for run: Rect2i in runs:
-		bake.box(Vector3(run.size.x*2,BACKING_ROOF,2),Vector3((run.position.x+(run.size.x-1)*0.5)*2,BACKING_ROOF/2,run.position.y*2),Color("35464f"))
+		bake.box(Vector3(run.size.x*2,BACKING_ROOF,2),Vector3((run.position.x+(run.size.x-1)*0.5)*2,BACKING_ROOF/2,run.position.y*2),slate)
 	var result := bake.finish(parent,"SolidRockBacking")
 	result.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if runs.is_empty(): return
@@ -115,7 +120,7 @@ static func _rock_backing(parent: Node3D,walkable: Dictionary,seed_value: int) -
 	for patch: Dictionary in patches:
 		var points: PackedVector3Array = patch.corners
 		for index in 4:
-			cap.surface.set_color(Color("35464f").lightened((patch.shade%5-2)*0.012))
+			cap.surface.set_color((Color("dce6dc") if biome == "frost" else slate).lightened((patch.shade%5-2)*0.012))
 			# Clockwise triangles produce upward normals in Godot.
 			for point in [points[index],points[(index+1)%4],patch.peak]:
 				cap.surface.add_vertex(point)
@@ -136,10 +141,35 @@ static func _rock_backing(parent: Node3D,walkable: Dictionary,seed_value: int) -
 			var across := lerpf((bounds.position.x if side < 2 else bounds.position.y)*2.0-10,(bounds.end.x if side < 2 else bounds.end.y)*2.0+10,index/8.0)
 			var at := Vector3(across,0,bounds.position.y*2-12) if side == 0 else Vector3(across,0,bounds.end.y*2+12) if side == 1 else Vector3(bounds.position.x*2-12,0,across) if side == 2 else Vector3(bounds.end.x*2+12,0,across)
 			var height := 7.0+posmod(index*7+side*3,5)
-			skyline.box(Vector3(12,height,12),at+Vector3.UP*height/2,Color("293c4a"))
-			skyline.box(Vector3(13,0.35,13),at+Vector3.UP*height,Color("354954"))
+			skyline.box(Vector3(12,height,12),at+Vector3.UP*height/2,(Color("71989f") if biome == "frost" else Color("2c453b") if biome == "overgrown_rail" else Color("293c4a")))
+			skyline.box(Vector3(13,0.35,13),at+Vector3.UP*height,(Color("bdd4d2") if biome == "frost" else Color("587451") if biome == "overgrown_rail" else Color("354954")))
 	var distant := skyline.finish(parent,"DistantFoundrySilhouette")
 	distant.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+static func _region_details(parent: Node3D,walkable: Dictionary,seed_value: int,biome: String) -> void:
+	if biome == "foundry" or walkable.is_empty(): return
+	var bake := Bake.new()
+	for cell: Vector2i in walkable:
+		var key := posmod(cell.x*37+cell.y*61+seed_value,23)
+		if biome == "overgrown_rail":
+			# Shallow fixed rails and sleepers remain cosmetic, below ankle height.
+			for side in [-1,1]: bake.box(Vector3(0.045,0.008,1.96),Vector3(cell.x*2+side*0.44,0.052,cell.y*2),Color("806348"))
+			for along in [-0.66,0,0.66]: bake.box(Vector3(1.18,0.004,0.11),Vector3(cell.x*2,0.049,cell.y*2+along),Color("6d7057"))
+		for direction: Vector2i in [Vector2i.UP,Vector2i.RIGHT,Vector2i.DOWN,Vector2i.LEFT]:
+			if walkable.has(cell+direction): continue
+			var outside := Vector3((cell.x+direction.x)*2,0,(cell.y+direction.y)*2)
+			if biome == "frost":
+				var ledge := Vector3(cell.x*2,2.52,cell.y*2)+Vector3(direction.x,0,direction.y)*1.08
+				bake.box(Vector3(0.12,0.08,1.86) if direction.x != 0 else Vector3(1.86,0.08,0.12),ledge,Color("e4e8da"))
+				if key%3 == 0:
+					var frame := Transform3D(Basis(Vector3.UP,atan2(-direction.x,-direction.y)),Vector3(cell.x*2,0,cell.y*2)+Vector3(direction.x,0,direction.y)*1.06)
+					bake.cutout(PackedVector2Array([Vector2(-0.25,0.3),Vector2(0.22,0.22),Vector2(0.31,1.12),Vector2(-0.16,1.4)]),0.055,frame,Color("79bec5"),Color("d1e2d9"))
+			elif key%3 == 0:
+				for leaf in 4:
+					var frame := Transform3D(Basis.from_euler(Vector3(0.2,leaf*1.3,0.3)),outside+Vector3(0,1.8+leaf*0.06,0))
+					bake.cutout(PackedVector2Array([Vector2(0,-0.17),Vector2(0.35,0.05),Vector2(0,0.52),Vector2(-0.2,0.08)]),0.035,frame,Color("668654"),Color("bdc5a0"))
+	var result := bake.finish(parent,"FrostShelves" if biome == "frost" else "RailsAndPaperFoliage")
+	result.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 static func dungeon_layout(walkable: Dictionary, seed_value: int) -> Dictionary:
 	var floors: Array[Transform3D] = []
@@ -172,7 +202,7 @@ static func dungeon_layout(walkable: Dictionary, seed_value: int) -> Dictionary:
 				piers.append(Transform3D(Basis.IDENTITY.scaled(Vector3(0.22, 0.67, 0.22)), center + Vector3(direction.x, 0, direction.y) * 1.22))
 	return {"floors": floors, "colors": floor_colors, "accents": accents, "walls": walls, "details": details, "piers": piers}
 
-static func _masonry(parent: Node3D, walkable: Dictionary, seed_value: int) -> void:
+static func _masonry(parent: Node3D, walkable: Dictionary, seed_value: int,biome: String = "foundry") -> void:
 	var bake := Bake.new()
 	for cell: Vector2i in walkable:
 		for direction: Vector2i in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
@@ -181,7 +211,7 @@ static func _masonry(parent: Node3D, walkable: Dictionary, seed_value: int) -> v
 			bake.frame = Transform3D(Basis(Vector3.UP, atan2(normal.x,normal.z)), Vector3(cell.x*2,0,cell.y*2) + Vector3(direction.x,0,direction.y)*1.04)
 			# Shallow staggered stone faces use the existing wall for collision.
 			for course in 3:
-				var tone := Color("526873").lightened(posmod(cell.x*7+cell.y*3+course,7)*0.016)
+				var tone := (Color("87afb5") if biome == "frost" else Color("5b7060") if biome == "overgrown_rail" else Color("526873")).lightened(posmod(cell.x*7+cell.y*3+course,7)*0.016)
 				if course % 2 == 0:
 					for x in [-0.5,0.5]: bake.box(Vector3(0.97,0.855,0.075), Vector3(x,0.48+course*0.9,0.02),tone)
 				else:
