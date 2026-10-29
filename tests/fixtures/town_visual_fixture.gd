@@ -55,7 +55,7 @@ func _run():
     var hero = view.get_node("MeleeHero")
     hero.position = cottage.to_global(Vector3(0,0.1,-7))
     hero.camera_pivot.rotation.y = PI
-    hero.visual.rotation.y = PI
+    hero.face_direction(Vector3.BACK)
     for i in 30: await process_frame
     await RenderingServer.frame_post_draw
     viewport.get_texture().get_image().save_png(capture_dir.path_join("Visual-pass-town-exterior.png"))

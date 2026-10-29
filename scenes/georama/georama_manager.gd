@@ -4,6 +4,7 @@ signal closed
 const Grid := preload("res://scenes/georama/town_grid.gd")
 const Visuals := preload("res://scenes/georama/town_visuals.gd")
 const Services := preload("res://scripts/utilities/services.gd")
+const EnvironmentArt = preload("res://scenes/environment/environment_art.gd")
 var grid := Grid.new()
 var editing := true
 var selected_id := ""
@@ -38,6 +39,7 @@ var _confirm: Button
 var _rotate: Button
 var _cancel: Button
 var _camera_bar: HBoxContainer
+var _dressing: MultiMeshInstance3D
 
 func _ready() -> void:
 	grid.bind_session(Services.game_state())
@@ -52,10 +54,15 @@ func _ready() -> void:
 	set_editing(true)
 
 func _build_terrain() -> void:
-	Visuals.box(self, Vector3(128, 0.2, 128), Vector3(63, -0.1, 63), Color(0.36, 0.55, 0.24), true)
-	Visuals.box(self, Vector3(6, 0.03, 128), Vector3(50, 0.01, 63), Color(0.12, 0.56, 0.72))
+	EnvironmentArt.town_terrain(self)
+	_dressing = preload("res://scenes/environment/town_dressing.gd").new()
+	add_child(_dressing)
+	var water := Visuals.box(self, Vector3(6, 0.03, 128), Vector3(50, 0.01, 63), Color(0.12, 0.56, 0.72))
+	water.material_override = EnvironmentArt.river()
 	$CameraPivot.position = Vector3(64, 0, 64)
 	$MeleeHero.position = Vector3(62, 0.1, 70)
+	$MeleeHero.camera_pivot.rotation.y = PI / 2
+	$MeleeHero.face_direction(Vector3.LEFT)
 	_update_camera()
 
 func _panel(position_value: Vector2, size_value: Vector2) -> PanelContainer:
@@ -159,6 +166,7 @@ func _build_ui() -> void:
 	_dialog.hide()
 
 func _refresh() -> void:
+	_dressing.cover(grid)
 	_render_town()
 	_foundations.clear()
 	foundation_ids.clear()

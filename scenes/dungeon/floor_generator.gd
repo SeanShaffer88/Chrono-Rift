@@ -1,7 +1,7 @@
 extends Node3D
 
 signal exit_reached
-const Scenery = preload("res://scripts/utilities/scenery.gd")
+const EnvironmentArt = preload("res://scenes/environment/environment_art.gd")
 const BSP := preload("res://scripts/utilities/bsp_tree.gd")
 const Factory := preload("res://scripts/utilities/primitive_mesh_factory.gd")
 const Orb := preload("res://scenes/dungeon/atla_sphere.gd")
@@ -90,18 +90,7 @@ func _build_content() -> void:
 			var neighbor := cell + direction
 			if not layout.walkable.has(neighbor):
 				walls[neighbor] = true
-	var flagstones: Array[Vector2i] = []
-	for cell: Vector2i in layout.walkable:
-		for offset in [Vector2i.ZERO, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.ONE]:
-			flagstones.append(cell * 2 + offset)
-	# Shift the half-size tiles so their outer edge still matches the collision floor.
-	var paving := Factory.create_tile_batch(flagstones, Vector3(0.96, 0.2, 0.96), Color(0.34, 0.40, 0.46), 1.0, -0.1)
-	paving.position = Vector3(-0.5, 0, -0.5)
-	content.add_child(paving)
-	for course in 3:
-		content.add_child(Factory.create_tile_batch(walls.keys(), Vector3(1.97, 0.9, 1.97), Color(0.29, 0.37, 0.46), CELL_SIZE, 0.46 + course * 0.94))
-	content.add_child(Factory.create_tile_batch(walls.keys(), Vector3(2.08, 0.16, 2.08), Color(0.39, 0.46, 0.53), CELL_SIZE, 2.84))
-	content.add_child(Factory.create_tile_batch(walls.keys(), Vector3(2.04, 0.22, 2.04), Color(0.22, 0.30, 0.35), CELL_SIZE, 0.11))
+	EnvironmentArt.dungeon(content, layout.walkable, floor_seed)
 	var solid := StaticBody3D.new()
 	solid.collision_layer = 1
 	solid.collision_mask = 0
@@ -150,24 +139,15 @@ func _build_content() -> void:
 		var healing := Healing.new()
 		healing.position = cell_to_world(cell)
 		content.add_child(healing)
-	for index in mini(4, layout.rooms.size()):
-		var torch := Factory.create_box(Vector3(0.18, 0.34, 0.18), Color(1, 0.55, 0.12), 1.5)
-		torch.position = cell_to_world(layout.rooms[index].position) + Vector3(0, 1.4, 0)
-		content.add_child(torch)
-		Scenery.add(content, "lantern", torch.position - Vector3(0, 1.4, 0), 1.0)
-		# Decorative rocks stay inside the wall footprint, never the corridor.
-		var wall_cell := layout.rooms[index].position - Vector2i.ONE
-		Scenery.add(content, "rock", cell_to_world(wall_cell), 1.2)
-		if index % 2 == 0:
-			Scenery.add(content, "banner", cell_to_world(layout.rooms[index].position) + Vector3(-0.8, 1.1, 0), 1.0)
-		else:
-			Scenery.add(content, "boulder", cell_to_world(wall_cell), 1.1)
-		var light := OmniLight3D.new()
-		light.light_color = Color(1.0, 0.65, 0.3)
-		light.light_energy = 1.4
-		light.omni_range = 10.0
-		light.position = torch.position + Vector3.UP
-		content.add_child(light)
+	var light_count := 0
+	for index in layout.rooms.size():
+		var room: Rect2i = layout.rooms[index]
+		var light_needed := index < 6 or room.has_point(key_cell) or room.has_point(exit_cell)
+		var at := cell_to_world(room.position + Vector2i(room.size.x / 2, 0)) - Vector3(0, 0, 0.9)
+		EnvironmentArt.torch(content, at, 0.0, light_needed and light_count < 8)
+		if light_needed:
+			light_count += 1
+
 	add_child(content)
 
 func _add_collision(body: StaticBody3D, size: Vector3, position_value: Vector3) -> void:
