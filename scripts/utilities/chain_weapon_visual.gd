@@ -5,18 +5,22 @@ const Factory = preload("res://scripts/utilities/primitive_mesh_factory.gd")
 static func make() -> Node3D:
 	var root := Node3D.new()
 	root.name = "ChainBlade"
+	var links := MultiMesh.new()
+	links.transform_format = MultiMesh.TRANSFORM_3D
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.038
+	torus.outer_radius = 0.07
+	torus.rings = 8
+	torus.ring_segments = 6
+	links.mesh = torus
+	links.instance_count = 8
 	for index in 8:
-		var link := MeshInstance3D.new()
-		var torus := TorusMesh.new()
-		torus.inner_radius = 0.038
-		torus.outer_radius = 0.07
-		torus.rings = 12
-		torus.ring_segments = 6
-		link.mesh = torus
-		link.material_override = Factory.get_shared_material(Color("82939d"), 0.45)
-		link.position.z = 0.4 - index * 0.11
-		link.rotation.z = (index % 2) * PI / 2
-		root.add_child(link)
+		links.set_instance_transform(index,Transform3D(Basis(Vector3.BACK,(index % 2)*PI/2),Vector3(0,0,0.4-index*0.11)))
+	var link_batch := MultiMeshInstance3D.new()
+	link_batch.name = "LinkedChain"
+	link_batch.multimesh = links
+	link_batch.material_override = Factory.get_shared_material(Color("82939d"),0.45)
+	root.add_child(link_batch)
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for side in [-1, 1]:

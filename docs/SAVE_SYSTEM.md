@@ -44,12 +44,16 @@ Files live in Godot's private `user://saves/` directory:
 - autosave.json.bak: validated previous primary (also created on first save)
 - .tmp/.bak.tmp: uncommitted files, ignored on startup
 
-Version 1 is a JSON envelope containing a JSON payload string and its SHA256
+Version 2 is a JSON envelope containing a JSON payload string and its SHA256
 checksum. Files are capped at 2 MiB. Read/validate the complete payload before
 mutating live state. Weapon IDs map to an explicit template allowlist; saves
 never choose scripts or arbitrary resource paths. Integer stat keys are stored
 as fixed-length arrays. This checksum detects accidental corruption; it is not
 an anti-cheat or authentication mechanism.
+
+The character-polish alpha changes the character ID to `riftwarden`. The user
+confirmed there are no existing player saves; no legacy-ID migration is added.
+Version 1 alpha files remain preserved/unsupported rather than silently rewritten.
 
 Writes flush/close and validate the temporary file, update the backup via a
 temporary copy, then replace the primary with a same-directory rename. A damaged

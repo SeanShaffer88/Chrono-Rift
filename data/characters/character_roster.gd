@@ -3,5 +3,5 @@ extends RefCounted
 const HEROES = {
 	"melee_hero": {"name": "Adventurer", "description": "Teal scarf · leather", "starter": preload("res://data/weapons/battle_wrench.tres")},
 	"swordsman": {"name": "Swordsman", "description": "Silver hair · dark coat", "starter": preload("res://data/weapons/duskblade.tres")},
-	"rift_warden": {"name": "Rift Warden", "description": "Ivory mask · crimson cape", "starter": preload("res://data/weapons/rift_chain.tres")},
+	"riftwarden": {"name": "Riftwarden", "description": "Ivory mask · crimson cape", "starter": preload("res://data/weapons/rift_chain.tres")},
 }

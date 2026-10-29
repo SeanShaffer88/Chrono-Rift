@@ -1,7 +1,7 @@
 extends RefCounted
 ## JSON-only, bounded, checksummed storage. Temp writes and atomic replacement;
 ## a validated previous primary becomes the backup before primary replacement.
-const VERSION := 1
+const VERSION := 2
 const MAX_BYTES := 2 * 1024 * 1024
 var path: String
 var validator: Callable

@@ -7,7 +7,7 @@ the scene tree and offers three original heroes with one shared combat model:
 | --- | --- | --- |
 | Adventurer | Brown hair, leather, teal scarf | Battle Wrench |
 | Swordsman | Silver hair, charcoal coat, shoulder guard | Duskblade |
-| Rift Warden | Ivory mask, emerald eyes, crimson cape | Crescent Chain |
+| Riftwarden | Ivory mask, emerald eyes, crimson cape | Crescent Chain |
 
 The swordsman and warden take silhouette inspiration from Sephiroth and Spawn;
 their names, costume geometry and models are original. Concept boards are

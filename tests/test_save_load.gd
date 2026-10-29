@@ -20,7 +20,7 @@ func run_assertions() -> void:
 	dungeon.floor_number = 4
 	dungeon.dungeon_seed = 981
 	dungeon._load_floor()
-	state.swap_character("rift_warden")
+	state.swap_character("riftwarden")
 	var inventory: Node = state.weapon_inventory
 	var starter: Resource = inventory.equipped_weapon
 	starter.base_attack = 29
@@ -77,10 +77,10 @@ func run_assertions() -> void:
 	_write(path + ".bak", "bad")
 	check(store.read_save().status == "invalid" and store.write_save(data) != OK, "Two invalid copies preserve files and block autosave")
 	var malformed := data.duplicate(true)
-	malformed.inventories.rift_warden.weapons[0].id = "res://untrusted.gd"
+	malformed.inventories.riftwarden.weapons[0].id = "res://untrusted.gd"
 	check(not Data.validate(malformed), "Save cannot load arbitrary resource paths")
 	malformed = data.duplicate(true)
-	malformed.inventories.rift_warden.equipped = 99
+	malformed.inventories.riftwarden.equipped = 99
 	check(not Data.validate(malformed), "Invalid equipped index is rejected")
 	malformed = data.duplicate(true)
 	malformed.thirst = INF
@@ -99,7 +99,7 @@ func run_assertions() -> void:
 	check(store.write_save(data) == OK, "Valid test save is ready for actual scene restoration")
 	state.reset()
 	dungeon.start_saving(path)
-	check(state.active_character_id == "rift_warden" and state.thirst == 42.5, "Active character and thirst restore")
+	check(state.active_character_id == "riftwarden" and state.thirst == 42.5, "Active character and thirst restore")
 	check(state.weapon_inventory.equipped_weapon.is_broken and not state.weapon_inventory.equipped_weapon.destroy_on_break, "Broken protected starter remains owned and equipped")
 	check(state.weapon_inventory.equipped_weapon.base_attack == 29 and state.weapon_inventory.equipped_weapon.elemental_stats[1] == 8 and state.weapon_inventory.equipped_weapon.slayer_stats[2] == 4, "Trained attack and integer-key elemental/slayer stats restore")
 	check(state.weapon_inventory.get_weapons()[1].current_durability == evolved.current_durability, "Other owned weapon wear restores independently")

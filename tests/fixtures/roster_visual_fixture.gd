@@ -21,7 +21,7 @@ func _run() -> void:
 	hero.set_physics_process(false)
 	hero.visual.rotation.y = PI
 	var state = root.get_node("GameState")
-	for id in ["melee_hero", "swordsman", "rift_warden"]:
+	for id in ["melee_hero", "swordsman", "riftwarden"]:
 		state.swap_character(id)
 		for i in 10: await process_frame
 		await RenderingServer.frame_post_draw
