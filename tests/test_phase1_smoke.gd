@@ -83,7 +83,7 @@ func _test_joystick_touch() -> void:
 	root.add_child(joystick)
 	await process_frame
 	var viewport_size := joystick.get_viewport_rect().size
-	check(joystick.call("get_rest_position").is_equal_approx(viewport_size * Vector2(0.2, 0.7)), "joystick: rest position is relative to viewport size")
+	check(joystick.call("get_rest_position").is_equal_approx((preload("res://scripts/utilities/menu_layout.gd").safe_rect(joystick.get_viewport()).position+preload("res://scripts/utilities/menu_layout.gd").safe_rect(joystick.get_viewport()).size*Vector2(0.2,0.7))), "joystick: rest position is relative to safe viewport bounds")
 
 	var start := viewport_size * Vector2(0.15, 0.6)
 	joystick._input(_touch(0, start, true))

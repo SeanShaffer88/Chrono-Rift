@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="960" viewBox="0 0 1400 960">
+<rect width="1400" height="960" fill="#24343c"/>
+<g fill="#142432" stroke="#aac6ce" stroke-width="2">
+<rect x="24" y="90" width="650" height="390" rx="8"/><rect x="710" y="90" width="666" height="390" rx="8"/>
+<rect x="24" y="530" width="1000" height="380" rx="8"/><rect x="1050" y="530" width="326" height="380" rx="8"/>
+</g>
+<g fill="#203746" stroke="#80abb8" stroke-width="2">
+<rect x="44" y="145" width="295" height="105"/><rect x="359" y="145" width="295" height="105"/>
+<rect x="44" y="270" width="295" height="105"/><rect x="359" y="270" width="295" height="105"/>
+<rect x="44" y="378" width="130" height="44"/><rect x="524" y="378" width="130" height="44"/><rect x="44" y="426" width="610" height="52"/>
+<rect x="730" y="378" width="130" height="44"/><rect x="1226" y="378" width="130" height="44"/><rect x="730" y="426" width="626" height="52"/>
+<rect x="44" y="610" width="275" height="220"/><rect x="729" y="610" width="275" height="220"/>
+<rect x="44" y="847" width="275" height="44"/><rect x="729" y="847" width="275" height="44"/>
+<rect x="350" y="610" width="349" height="44"/><rect x="350" y="670" width="349" height="44"/>
+<rect x="350" y="728" width="349" height="44"/><rect x="350" y="786" width="349" height="44"/><rect x="350" y="844" width="349" height="44"/>
+<rect x="1070" y="586" width="286" height="88"/><rect x="1070" y="688" width="134" height="80"/><rect x="1222" y="688" width="134" height="80"/><rect x="1070" y="780" width="286" height="80"/>
+</g>
+<g fill="#c5d9df" font-size="20">
+<text x="24" y="35" font-size="27">Chrono Rift: menus fit without scrollbars</text>
+<text x="24" y="66">Desktop normal 1280 x 720 / native maximize and restore / Android landscape safe area</text>
+<text x="44" y="125" font-size="25">Characters: preserve existing card layout</text>
+<text x="58" y="178" font-size="22">Infiltrator</text><text x="58" y="210">Trail Sword</text><text x="58" y="238">Switch</text>
+<text x="373" y="178" font-size="22">Shadowblade</text><text x="373" y="210">Buster Sword</text><text x="373" y="238">Switch</text>
+<text x="58" y="303" font-size="22">Riftwarden</text><text x="58" y="335">Red Energy Sword</text><text x="58" y="363">Switch</text>
+<text x="373" y="303" font-size="22">Battlemage</text><text x="373" y="335">Battlestaff</text><text x="373" y="363">Switch</text>
+<text x="56" y="417">Previous</text><text x="285" y="417">Page 1 / 2</text><text x="552" y="417">Next</text><text x="310" y="463">Close</text>
+<text x="730" y="125" font-size="25">Town dialogue and analysis</text>
+<text x="730" y="180">Keep the existing panel style and readable text.</text>
+<text x="730" y="225">Long text wraps into complete bounded pages.</text>
+<text x="730" y="270">No hidden, clipped or unreachable content.</text>
+<text x="742" y="417">Previous</text><text x="990" y="417">Page 1 / 3</text><text x="1254" y="417">Next</text><text x="1010" y="463">Back</text>
+<text x="24" y="510" font-size="18">Page 2 reveals unlocked Devourer. Wide safe rectangles may use 3 x 2 cards. Locked secret stays absent.</text>
+<text x="44" y="566" font-size="23">Town assembly: existing three columns and world controls retained</text>
+<text x="44" y="600">Foundation Parts</text><text x="729" y="600">Specific Parts</text>
+<text x="58" y="646">Recovered row 1</text><text x="58" y="688">Recovered row 2</text><text x="58" y="730">Recovered row 3</text><text x="58" y="772">Recovered row 4</text><text x="58" y="814">Recovered row 5</text>
+<text x="743" y="646">Recovered row 1</text><text x="743" y="688">Recovered row 2</text><text x="743" y="730">Recovered row 3</text><text x="743" y="772">Recovered row 4</text><text x="743" y="814">Recovered row 5</text>
+<text x="58" y="877">Prev       1 / 8       Next</text><text x="743" y="877">Prev       1 / 8       Next</text>
+<text x="363" y="640">Previous     Roof     Next</text><text x="363" y="700">Attach specific part</text><text x="363" y="758">Remove specific part</text><text x="363" y="816">Arrange foundation</text><text x="363" y="874">Return to parts</text>
+<text x="1070" y="566" font-size="22">Mobile size sample</text><text x="1080" y="620" font-size="24">Fewer cards / rows</text><text x="1080" y="657" font-size="24">24 body font</text>
+<text x="1090" y="738" font-size="24">Prev</text><text x="1240" y="738" font-size="24">Next</text><text x="1160" y="830" font-size="24">Close</text>
+<text x="1070" y="882" font-size="17">480 DPI / scale 2 example</text><text x="1070" y="905" font-size="17">72 touch / 80 primary</text>
+<text x="730" y="330" font-size="27" fill="#eadfc8">FROST WORKS</text><text x="990" y="330" font-size="17">Entry / unlock titles only</text>
+<text x="24" y="943" font-size="18">Wireframe plan, not a game capture. Page navigation and actions stay pinned; no scroll containers or popup scrolling.</text>
+</g></svg>

@@ -2,6 +2,9 @@ extends Control
 ## Round on-screen button that presses an input action while a finger is on it.
 ## Tracks its own touch index so it works alongside the joystick and other buttons.
 
+const Layout=preload("res://scripts/utilities/menu_layout.gd")
+var _base_offsets := Rect2()
+var _base_font := 20
 @export var action: StringName = &"attack"
 @export var label_text: String = "ATK"
 @export var idle_color: Color = Color(0.04, 0.10, 0.16, 0.42)
@@ -12,6 +15,10 @@ var _touch_index := -1
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
+	_base_offsets=Rect2(Vector2(offset_left,offset_top),Vector2(offset_right-offset_left,offset_bottom-offset_top))
+	_base_font=font_size
+	get_viewport().size_changed.connect(_fit_safe)
+	_fit_safe.call_deferred()
 
 func is_pressed() -> bool:
 	return _touch_index != -1
@@ -53,3 +60,18 @@ func _draw() -> void:
 	draw_arc(size * 0.5, r - 2.0, 0.0, TAU, 48, Color(0.75, 0.87, 0.9, 0.7), 2.0, true)
 	var font := ThemeDB.fallback_font
 	draw_string(font, Vector2(0.0, size.y * 0.5 + font_size * 0.35), label_text, HORIZONTAL_ALIGNMENT_CENTER, size.x, font_size)
+
+func _fit_safe() -> void:
+	if is_pressed(): _release()
+	var safe := Layout.safe_rect(get_viewport())
+	var m := Layout.metrics(get_viewport())
+	var scale := maxf(1,m.touch/90.0)
+	set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	position=safe.end+_base_offsets.position*scale
+	size=_base_offsets.size*scale
+	font_size=maxi(_base_font,m.secondary)
+	var center := position+size/2
+	var label_width := ThemeDB.fallback_font.get_string_size(label_text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x+12
+	size=Vector2.ONE*maxf(minf(size.x,size.y),label_width)
+	position=(center-size/2).clamp(safe.position,safe.end-size)
+	queue_redraw()

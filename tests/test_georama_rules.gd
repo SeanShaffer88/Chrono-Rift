@@ -118,7 +118,7 @@ func _test_views() -> void:
 	root.add_child(view)
 	await process_frame
 	check(view.editing and view.get_node("CameraPivot/Camera3D").current, "town opens in overhead Georama mode")
-	check(view._camera_bar.get_global_rect().end.y <= root.get_visible_rect().size.y, "placement and camera controls stay inside the viewport")
+	check(view._camera_bar.get_global_rect().end.y <= root.get_visible_rect().size.y, "placement and camera controls stay inside the viewport: "+str(view._camera_bar.get_global_rect())+" viewport="+str(root.get_visible_rect()))
 	var record: Dictionary = state.town_objects.orb_mayor_house.duplicate(true)
 	view.selected_id = "orb_mayor_house"
 	view.begin_selected()
