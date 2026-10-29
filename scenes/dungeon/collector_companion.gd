@@ -19,7 +19,8 @@ func _ready() -> void:
 	sphere.radial_segments = 12
 	sphere.rings = 6
 	core.mesh = sphere
-	core.material_override = Factory.get_shared_material(Color("64132b"), 0.4, 0.9)
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	core.material_override = preload("res://assets/shaders/companion_energy.tres")
 	add_child(core)
 	for index in 2:
 		var arc := MeshInstance3D.new()

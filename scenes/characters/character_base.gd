@@ -11,6 +11,10 @@ const LAYER_PLAYER := 2
 const LAYER_ENEMIES := 3
 
 const Services := preload("res://scripts/utilities/services.gd")
+const Sight = preload("res://scripts/combat/combat_visibility.gd")
+const CameraRig = preload("res://scripts/utilities/adventure_camera.gd")
+var camera_rig: RefCounted
+var lock_marker: Label3D
 
 @export var character_id: String = "character"
 @export var is_player: bool = true
@@ -60,6 +64,15 @@ func _ready() -> void:
 	spring_arm.rotation.x = deg_to_rad(camera_pitch_degrees)
 	spring_arm.add_excluded_object(get_rid())
 	camera.current = is_player
+	camera_rig = CameraRig.new(self)
+	lock_marker = Label3D.new()
+	lock_marker.text = "[ + ]"
+	lock_marker.font_size = 32
+	lock_marker.modulate = Color("8ce5f2")
+	lock_marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lock_marker.top_level = true
+	lock_marker.hide()
+	add_child(lock_marker)
 
 static func layer_bit(layer: int) -> int:
 	return 1 << (layer - 1)
@@ -76,6 +89,7 @@ static func ensure_input_actions() -> void:
 		&"lock_on": [KEY_L, KEY_TAB],
 		&"camera_left": [KEY_Q],
 		&"camera_right": [KEY_E],
+		&"target_next": [KEY_C],
 	}
 	for action: StringName in bindings:
 		if InputMap.has_action(action):
@@ -90,7 +104,11 @@ func _physics_process(delta: float) -> void:
 	if not is_dead():
 		_tick(delta)
 	if is_player and not is_dead():
-		camera_pivot.rotation.y -= Input.get_axis(&"camera_left", &"camera_right") * camera_turn_speed * delta
+		var orbit_input := Input.get_axis(&"camera_left", &"camera_right")
+		if orbit_input != 0.0:
+			camera_rig.orbit(-orbit_input * camera_turn_speed * delta, 0.0)
+		if Input.is_action_just_pressed(&"target_next"):
+			cycle_lock_target()
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 	var move_dir := get_camera_relative_direction(get_move_input())
@@ -107,7 +125,20 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	update_lock_on()
 	_update_facing(move_dir, delta)
-	camera_pivot.global_position = global_position + Vector3.UP * camera_height
+	camera_rig.update(delta)
+	lock_marker.visible = is_instance_valid(lock_target)
+	if lock_marker.visible:
+		lock_marker.global_position = lock_target.global_position + Vector3.UP * 2.0
+
+func _unhandled_input(event: InputEvent) -> void:
+	if is_player and not is_dead() and camera.current:
+		camera_rig.input(event)
+
+func _notification(what: int) -> void:
+	if what in [NOTIFICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_WINDOW_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED] and camera_rig != null:
+		camera_rig.touch_index = -1
+	elif what == NOTIFICATION_VISIBILITY_CHANGED and camera_rig != null and not is_visible_in_tree():
+		camera_rig.touch_index = -1
 
 # --- Overridable hooks -------------------------------------------------------
 
@@ -137,8 +168,12 @@ func get_move_input() -> Vector2:
 	if not is_player:
 		return ai_move_input.limit_length(1.0)
 	var value := Vector2.ZERO
-	if not is_instance_valid(_joystick) and is_inside_tree():
-		_joystick = get_tree().get_first_node_in_group(&"virtual_joystick")
+	if is_inside_tree() and (not is_instance_valid(_joystick) or not _joystick.is_visible_in_tree() or _joystick.get_viewport() != get_viewport()):
+		_joystick = null
+		for control: Node in get_tree().get_nodes_in_group(&"virtual_joystick"):
+			if control is Control and control.is_visible_in_tree() and control.get_viewport() == get_viewport():
+				_joystick = control
+				break
 	if is_instance_valid(_joystick) and _joystick.has_method("get_vector"):
 		value = _joystick.call("get_vector")
 	if value == Vector2.ZERO:
@@ -184,6 +219,8 @@ func update_lock_on() -> void:
 func _is_valid_target(target: Node3D, max_range: float, min_dot: float) -> bool:
 	if not is_instance_valid(target) or target == self or not target.is_inside_tree() or not target.is_visible_in_tree():
 		return false
+	if target.get_world_3d() != get_world_3d() or not Sight.clear_between(self, target):
+		return false
 	if target.has_method("is_alive") and not target.call("is_alive"):
 		return false
 	var offset := _flat_offset_to(target)
@@ -191,6 +228,20 @@ func _is_valid_target(target: Node3D, max_range: float, min_dot: float) -> bool:
 	if dist > max_range or dist < 0.001:
 		return false
 	return facing_direction.dot(offset / dist) >= min_dot
+
+func cycle_lock_target() -> bool:
+	if is_dead() or not is_lock_on_held():
+		return false
+	var candidates: Array[Node3D] = []
+	for node: Node in get_tree().get_nodes_in_group(&"enemies"):
+		if node is Node3D and _is_valid_target(node, lock_on_range, -1.0):
+			candidates.append(node)
+	candidates.sort_custom(func(a: Node3D, b: Node3D) -> bool: return yaw_for(_flat_offset_to(a)) < yaw_for(_flat_offset_to(b)))
+	if candidates.is_empty():
+		_set_lock_target(null)
+		return false
+	_set_lock_target(candidates[(candidates.find(lock_target) + 1) % candidates.size()])
+	return true
 
 func _flat_offset_to(target: Node3D) -> Vector3:
 	var offset := target.global_position - global_position
@@ -248,6 +299,8 @@ func take_damage(amount: int) -> bool:
 func _on_death() -> void:
 	velocity.x = 0.0
 	velocity.z = 0.0
+	if camera_rig != null:
+		camera_rig.touch_index = -1
 	_set_lock_target(null)
 
 func heal(amount: int) -> void:

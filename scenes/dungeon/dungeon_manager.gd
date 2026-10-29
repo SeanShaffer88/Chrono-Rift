@@ -7,6 +7,7 @@ var floor_generator := Floor.new()
 var town_view: Node3D = null
 var _town_layer: CanvasLayer
 var _previous_process_mode: int
+var _defeat_ui: PanelContainer
 
 func _ready() -> void:
 	add_child(floor_generator)
@@ -30,6 +31,51 @@ func _ready() -> void:
 	button.offset_bottom = 64
 	button.pressed.connect(open_town)
 	$TouchUI.add_child(button)
+	_build_defeat_ui()
+	$MeleeHero.died.connect(func(): _defeat_ui.show())
+
+func _build_defeat_ui() -> void:
+	_defeat_ui = PanelContainer.new()
+	_defeat_ui.name = "DefeatPanel"
+	_defeat_ui.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_defeat_ui.offset_left = -220
+	_defeat_ui.offset_right = 220
+	_defeat_ui.offset_top = -90
+	_defeat_ui.offset_bottom = 90
+	var frame := StyleBoxFlat.new()
+	frame.bg_color = Color("142432")
+	frame.border_color = Color("aac6ce")
+	frame.set_border_width_all(2)
+	frame.set_content_margin_all(16)
+	_defeat_ui.add_theme_stylebox_override("panel", frame)
+	var column := VBoxContainer.new()
+	_defeat_ui.add_child(column)
+	var label := Label.new()
+	label.text = "Defeated"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 30)
+	column.add_child(label)
+	var note := Label.new()
+	note.text = "Weapon wear and collected town parts remain."
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(note)
+	var retry := Button.new()
+	retry.text = "Retry floor"
+	retry.custom_minimum_size.y = 56
+	retry.pressed.connect(retry_floor)
+	column.add_child(retry)
+	$TouchUI.add_child(_defeat_ui)
+	_defeat_ui.hide()
+
+func retry_floor() -> bool:
+	if not $MeleeHero.is_dead() or is_instance_valid(town_view):
+		return false
+	$MeleeHero.current_hp = $MeleeHero.max_hp
+	$MeleeHero.hp_changed.emit($MeleeHero.current_hp, $MeleeHero.max_hp)
+	$MeleeHero._on_weapon_equipped($MeleeHero.weapon_inventory.equipped_weapon)
+	_defeat_ui.hide()
+	_load_floor()
+	return true
 
 func open_town() -> void:
 	if is_instance_valid(town_view) or $MeleeHero.is_dead():
@@ -78,6 +124,7 @@ func _load_floor() -> void:
 		return
 	$MeleeHero.position = floor_generator.cell_to_world(floor_generator.spawn_cell) + Vector3.UP * 0.1
 	$MeleeHero.velocity = Vector3.ZERO
+	$MeleeHero.camera_rig.snap()
 
 func _queue_next_floor() -> void:
 	# Exit triggers run during physics; replace collision objects afterward.
