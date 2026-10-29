@@ -60,6 +60,7 @@ func run_assertions() -> void:
 	check(buffer.has("torso") and buffer.size() == 6, "Animation can reuse an owned output buffer")
 	var state := Services.game_state()
 	state.reset()
+	state.record_floor_clear(6)
 	var hero: Node3D = load("res://scenes/characters/melee_hero.tscn").instantiate()
 	root.add_child(hero)
 	hero.set_physics_process(false)

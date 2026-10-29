@@ -30,6 +30,23 @@ func run_assertions() -> void:
 		var mesh := Paper.shape(kind)
 		closed(mesh,"Folded "+kind)
 		check(mesh==Paper.shape(kind) and mesh.get_surface_count()==1 and mesh.get_faces().size()<1500 and mesh.get_aabb().size.z>0.8,"Folded %s caches bounded layered geometry with real depth" % kind)
+	for kind: String in Paper.HERO_FORMS:
+		var mesh := Paper.hero_shape(kind)
+		closed(mesh,"Hero-only "+kind)
+		check(mesh==Paper.hero_shape(kind) and mesh.get_surface_count()==1 and mesh.get_faces().size()<1500,"Hero-only %s reuses a bounded one-surface form" % kind)
+	var devourer := preload("res://scripts/utilities/devourer_art.gd").make()
+	var second_devourer := preload("res://scripts/utilities/devourer_art.gd").make()
+	for key in ["Shell","MouthFrame","Jaw","SingleEye"]:
+		var part: MeshInstance3D=devourer.get_node(key)
+		closed(part.mesh,"Devourer "+key)
+		check(part.mesh==second_devourer.get_node(key).mesh and part.mesh.get_faces().size()<3000,"Devourer %s caches bounded closed geometry"%key)
+	var shell: Mesh=devourer.get_node("Shell").mesh
+	check(shell.get_aabb().size.x>=0.95 and shell.get_aabb().size.z>=0.95 and shell.get_aabb().size.x<=1.001 and shell.get_aabb().size.y<=1.001 and shell.get_aabb().size.z<=1.001,"Devourer spherical shell retains approved unit bounds: "+str(shell.get_aabb()))
+	devourer.free()
+	second_devourer.free()
+	var staff := preload("res://scripts/utilities/weapon_art.gd").mesh("battlemage_staff")
+	closed(staff,"Battlestaff")
+	check(staff==preload("res://scripts/utilities/weapon_art.gd").mesh("battlemage_staff") and staff.get_aabb().position.z>=-1.11 and staff.get_aabb().end.z<=1.16,"Battlestaff caches closed geometry inside approved melee extent")
 	var energy := preload("res://scripts/utilities/chain_weapon_visual.gd").make()
 	var duplicate := preload("res://scripts/utilities/chain_weapon_visual.gd").make()
 	for kind in ["Grip","ForkedProngs","HotInnerEdges"]:
@@ -110,10 +127,46 @@ func run_assertions() -> void:
 	var index: int=visual.pose_parts.find(shield)
 	check(index>=0 and visual.pose_roles[index]==0 and shield.position.z>0.25,"Infiltrator shield is back-mounted on the body pose, not either arm")
 	check(shield.find_children("*","CollisionObject3D",true,false).is_empty(),"Back shield has no block or damage collider")
+	var inf_fringe: Transform3D=visual.get_node("FringeFront1").transform
 	state.swap_character("swordsman")
+	var hair: MeshInstance3D=visual.get_node("Hair")
+	var hair_faces := hair.mesh.get_faces()
+	for lock_index in 4:
+		var lock: MeshInstance3D=visual.get_node("FringeFront%d" % lock_index)
+		var root_back: Vector3=lock.transform*Vector3(0,0.5,0.385)
+		var tip: Vector3=lock.transform*Vector3(0.18,-0.5,-0.1)
+		var surface := INF
+		for triangle in range(0,hair_faces.size(),3):
+			var hit: Variant=Geometry3D.ray_intersects_triangle(Vector3(root_back.x,root_back.y,-3),Vector3.BACK,hair.transform*hair_faces[triangle],hair.transform*hair_faces[triangle+1],hair.transform*hair_faces[triangle+2])
+			if hit is Vector3: surface=minf(surface,hit.z)
+		check(is_finite(surface) and root_back.z>=surface and tip.y>1.70,"Shadowblade fringe %d joins the real crown and clears the eyes" % lock_index)
 	check(not shield.visible,"Shadowblade cannot retain Infiltrator back shield")
 	state.swap_character("melee_hero")
+	check(visual.get_node("FringeFront1").transform.is_equal_approx(inf_fringe),"Switching back restores Infiltrator fringe rest pose without accumulated Shadowblade transforms")
 	check(shield.visible and state.weapon_inventory.equipped_weapon.weapon_id=="trail_sword","Infiltrator restores back shield and new sword starter")
+	var head: MeshInstance3D=visual.get_node("Head")
+	for label in ["EyeWhite-1","EyeWhite1","Eye-1","Eye1","Brow-1","Brow1","Lid-1","Lid1"]:
+		var face_part: MeshInstance3D=visual.get_node(label)
+		var front := INF
+		var faces := head.mesh.get_faces()
+		for triangle in range(0,faces.size(),3):
+			var hit: Variant=Geometry3D.ray_intersects_triangle(Vector3(face_part.position.x,face_part.position.y,-3),Vector3.BACK,head.transform*faces[triangle],head.transform*faces[triangle+1],head.transform*faces[triangle+2])
+			if hit is Vector3: front=minf(front,hit.z)
+		var gap := front-face_part.position.z
+		check(is_finite(front) and gap>0 and gap<0.018,"%s stays shallow against the actual tapered head surface" % label)
+	var nose: MeshInstance3D=visual.get_node("Nose")
+	var nose_box: AABB=nose.transform*nose.mesh.get_aabb()
+	check(nose_box.position.z< -0.33 and nose_box.end.z> -0.30 and nose_box.size.z<0.13,"Compact wedge nose penetrates the face and projects only a short ridge")
+	state.swap_character("riftwarden")
+	var center_cape: MeshInstance3D=visual.get_node("CapeCenter")
+	closed(center_cape.mesh,"Actual center cape contour")
+	check(center_cape.visible and center_cape.mesh!=Paper.hero_shape("cloth") and center_cape.mesh.get_aabb().size.y>1.05,"Center cape retains its pointed cached contour rather than fallback cloth")
+	var hero_count: int=visual.find_children("*","MeshInstance3D",true,false).size()
+	for cycle in 3:
+		state.swap_character("swordsman")
+		visual._process(0.04)
+		state.swap_character("melee_hero")
+	check(visual.find_children("*","MeshInstance3D",true,false).size()==hero_count and shield.visible and visual.pose_roles[index]==0,"Repeated quality-hero switches preserve node count and body-owned back shield")
 	hero.free()
 	state.reset()
 	for pack in ["train","factory"]: check(FileAccess.file_exists("res://assets/kenney/"+pack+"/License.txt"),"Imported %s retains its exact CC0 license" % pack)

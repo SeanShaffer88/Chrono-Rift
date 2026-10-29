@@ -4,6 +4,7 @@ extends CharacterBody3D
 
 signal hit_received(damage: int, current_hp: int)
 
+@export var is_boss := false
 @export var max_hp: int = 60
 @export var respawn_delay: float = 2.0
 @export var flash_color: Color = Color(1.0, 0.35, 0.3)
@@ -41,6 +42,9 @@ func _physics_process(delta: float) -> void:
 			current_hp = max_hp
 			visible = true
 			_set_collidable(true)
+
+func get_swallow_damage(ordinary_damage: int) -> int:
+	return current_hp if is_alive() and not is_boss else ordinary_damage
 
 func receive_hit(damage: int, _source: Node) -> bool:
 	if damage <= 0 or not is_alive():

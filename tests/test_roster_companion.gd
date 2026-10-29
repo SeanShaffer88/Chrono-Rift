@@ -7,6 +7,21 @@ const Pickup = preload("res://scenes/dungeon/dungeon_pickup.gd")
 const Floor = preload("res://scenes/dungeon/floor_generator.gd")
 const Menu = preload("res://scenes/ui/character_menu.gd")
 
+class ResolverProbe extends Node3D:
+	var box: Area3D
+	var source: Node
+	var area := Area3D.new()
+	var is_boss := false
+	var calls := 0
+	var hits := 0
+	func get_swallow_damage(_ordinary: int) -> int:
+		calls+=1
+		box.try_swallow(area,source,15)
+		return 60
+	func receive_hit(_amount: int,_source: Node) -> bool:
+		hits+=1
+		return true
+
 func run_assertions() -> void:
 	var state := Services.game_state()
 	state.reset()
@@ -38,6 +53,11 @@ func run_assertions() -> void:
 	check(hero.is_attacking(), "Inactive inventory cannot cancel active character's combat")
 	state.swap_character("swordsman")
 	check(hero.weapon_inventory.equipped_weapon == sword and sword.current_durability == 53.0, "Switching retains owned weapon and wear")
+	check(state.swap_character("battlemage"), "Battlemage can be selected")
+	check(hero.weapon_inventory.equipped_weapon.weapon_id == "battlemage_staff", "Battlemage owns its protected melee staff")
+	check(hero.get_node("Visual/MageHat").visible and not hero.get_node("Visual/Hair").visible, "Battlemage owns its hat and hides ordinary hair")
+	check(hero.request_attack(), "Battlemage uses existing melee attack")
+	hero.tick_combat(1.0)
 	var layer := CanvasLayer.new()
 	root.add_child(layer)
 	var menu := Menu.new()
@@ -56,7 +76,65 @@ func run_assertions() -> void:
 	hero.current_hp = 100
 	state.reset()
 	check(hero.character_id == "melee_hero" and hero.weapon_inventory == state.weapon_inventory, "Session reset rebinds active hero to starter inventory")
-	check(state.character_inventories.size() == 3, "Reset retains exactly three owned inventories")
+	check(state.character_inventories.size() == 5, "Reset retains five owned inventories including empty locked secret")
+	check(not state.is_character_available("devourer") and not state.swap_character("devourer"), "Secret availability blocks direct selection before unlock")
+	state.record_floor_clear(5)
+	check(not state.secret_unlocked, "Floor five clear cannot unlock secret")
+	state.record_floor_clear(6)
+	state.record_floor_clear(6)
+	check(state.secret_unlocked and state.swap_character("devourer"), "Floor six clear unlocks idempotently")
+	check(hero.weapon_inventory.get_weapons().is_empty() and hero.weapon_inventory.equipped_weapon==null, "Devourer owns no hidden weapon")
+	check(hero.weapon_inventory.add_weapon(preload("res://data/weapons/trail_sword.tres"))==null and not hero.weapon_inventory.equip(sword), "Weaponless inventory rejects storing and equipping weapons")
+	check(hero.get_node("Visual/DevourerArt").visible and not hero.get_node("Visual/Head").visible and not blade.visible, "Devourer hides humanoid and weapon geometry")
+	var hud := preload("res://scenes/ui/adventure_hud.gd").new()
+	hud.hero=hero
+	root.add_child(hud)
+	hud._process(0)
+	check(not hud.whp.visible and not hud.caption.text.contains("WHP"),"Devourer HUD contains no durability bar or caption")
+	check(hero.request_attack() and hero.get_current_attack_damage()==15, "Weaponless attack uses unchanged starter-balanced shared combo")
+	hero.tick_combat(0.11)
+	var enemy_factory := Floor.new()
+	var target := enemy_factory._create_guard()
+	root.add_child(target)
+	target.set_physics_process(false)
+	target.position=hero.position+Vector3(0,0,-1)
+	var hurt: Area3D=target.get_node("Hurtbox")
+	hurt.set_script(preload("res://scripts/combat/hurtbox_3d.gd"))
+	hurt.iframe_duration=0.2
+	hurt._iframe_left=0.1
+	check(hero.weapon_hitbox.try_swallow(hurt,hero,15)==null and target.current_hp==60, "Swallow respects hurtbox invulnerability and permits later retry")
+	hurt._iframe_left=0
+	check(hero.weapon_hitbox.try_swallow(hurt,hero,15)==target and target.current_hp==0 and hero.weapon_hitbox.last_resolved_damage==60, "Accepted normal swallow uses lethal remaining HP through normal death pipeline")
+	check(hero.weapon_hitbox.try_swallow(hurt,hero,15)==null, "One active window cannot acknowledge the same enemy twice")
+	target.queue_free()
+	var boss := enemy_factory._create_guard()
+	boss.is_boss=true
+	root.add_child(boss)
+	boss.set_physics_process(false)
+	boss.position=hero.position+Vector3(0,0,-1)
+	check(hero.weapon_hitbox.try_swallow(boss.get_node("Hurtbox"),hero,15)==boss and boss.current_hp==45 and not hero.weapon_hitbox.last_swallowed, "Explicit boss receives ordinary damage without swallow cue")
+	boss.queue_free()
+	var probe := ResolverProbe.new()
+	probe.box=hero.weapon_hitbox
+	probe.source=hero
+	probe.add_child(probe.area)
+	root.add_child(probe)
+	probe.position=hero.position+Vector3(0,0,-1)
+	check(hero.weapon_hitbox.try_swallow(probe.area,hero,15)==probe and probe.calls==1 and probe.hits==1,"Resolver reentry cannot recurse or acknowledge duplicate swallow")
+	probe.queue_free()
+
+	enemy_factory.free()
+	hero.tick_combat(1)
+	state.swap_character("melee_hero")
+	check(not hero.get_node("Visual/Body").visible and not hero.get_node("Visual/Face").visible and hero.get_node("Visual/Head").visible,"Secret-to-normal swap keeps legacy placeholders hidden")
+	state.swap_character("swordsman")
+	hud._process(0)
+	check(hud.whp.visible and hud.caption.text.contains("WHP"),"Ordinary hero restores equipment HUD")
+	hud.queue_free()
+	check(not hero.get_node("Visual/Body").visible and not hero.get_node("Visual/Face").visible,"Normal-to-normal swap keeps legacy placeholders hidden")
+	check(state.secret_unlocked, "Switching cannot relock unlocked secret")
+	state.reset()
+	check(not state.secret_unlocked, "New game reset relocks secret")
 	var companion := Companion.new()
 	companion.hero = hero
 	root.add_child(companion)

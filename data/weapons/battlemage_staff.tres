@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/weapons/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+weapon_id = "battlemage_staff"
+display_name = "Battlestaff"
+base_attack = 15
+current_durability = 60.0
+max_durability = 60.0
+degradation_rate = 0.45
+destroy_on_break = false
+build_up_branches = Array[Dictionary]([{
+"target_path": "res://data/weapons/gladius.tres",
+"req_atk": 20,
+"req_elem": {1: 5},
+"req_slayer": {1: 3}
+}])
