@@ -23,15 +23,65 @@ static func dungeon(parent: Node3D, walkable: Dictionary, seed_value: int) -> vo
 	root.add_child(Assets.batch("wall", plan.walls))
 	root.add_child(Assets.batch("wall_detail", plan.details))
 	root.add_child(Assets.batch("pier", plan.piers))
-	var tiles: Array[Vector2i] = []
-	for cell: Vector2i in walkable:
-		for offset: Vector2i in [Vector2i.ZERO, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.ONE]:
-			tiles.append(cell * 2 + offset)
-	var paving := Factory.create_tile_batch(tiles, Vector3(0.965,0.025,0.965), Color("9e8b70"), 1.0, 0.013)
-	paving.name = "InsetFlagstones"
-	paving.position = Vector3(-0.5,0,-0.5)
-	root.add_child(paving)
+	_flagstones(root,walkable,seed_value)
 	_masonry(root, walkable, seed_value)
+	_rock_backing(root,walkable)
+
+static func paving_layout(walkable: Dictionary, seed_value: int) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for cell: Vector2i in walkable:
+		for row in 2:
+			var key := posmod(cell.x*73+cell.y*97+row*31+seed_value,101)
+			var split := 0.72 + (key%5)*0.12
+			var widths := PackedFloat32Array([1.97]) if key%3 == 0 else PackedFloat32Array([split-0.02,1.97-split])
+			var start := -0.985
+			for width in widths:
+				result.append({"size":Vector3(width,0.045,0.97),"at":Vector3(cell.x*2+start+width/2,0.025,cell.y*2-0.5+row),"color":Color("a48e70").lightened((key%7-3)*0.018)})
+				start += width+0.02
+	return result
+
+static func _flagstones(parent: Node3D,walkable: Dictionary,seed_value: int) -> void:
+	var bake := Bake.new()
+	for slab: Dictionary in paving_layout(walkable,seed_value): bake.box(slab.size,slab.at,slab.color)
+	bake.finish(parent,"InsetFlagstones")
+
+static func backing_runs(walkable: Dictionary) -> Array[Rect2i]:
+	var result: Array[Rect2i] = []
+	if walkable.is_empty(): return result
+	var bounds := Rect2i(walkable.keys()[0],Vector2i.ONE)
+	for cell: Vector2i in walkable: bounds = bounds.merge(Rect2i(cell,Vector2i.ONE))
+	bounds = bounds.grow(3)
+	for y in range(bounds.position.y,bounds.end.y):
+		var x := bounds.position.x
+		while x < bounds.end.x:
+			if walkable.has(Vector2i(x,y)):
+				x += 1
+				continue
+			var start := x
+			while x < bounds.end.x and not walkable.has(Vector2i(x,y)): x += 1
+			result.append(Rect2i(start,y,x-start,1))
+	return result
+
+static func _rock_backing(parent: Node3D,walkable: Dictionary) -> void:
+	var bake := Bake.new()
+	var runs := backing_runs(walkable)
+	for run: Rect2i in runs:
+		bake.box(Vector3(run.size.x*2,2.72,2),Vector3((run.position.x+(run.size.x-1)*0.5)*2,1.36,run.position.y*2),Color("35464f"))
+	var result := bake.finish(parent,"SolidRockBacking")
+	result.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if runs.is_empty(): return
+	var bounds := Rect2i(runs[0].position,Vector2i.ONE)
+	for run: Rect2i in runs: bounds = bounds.merge(run)
+	var skyline := Bake.new()
+	for side in 4:
+		for index in 9:
+			var across := lerpf((bounds.position.x if side < 2 else bounds.position.y)*2.0-10,(bounds.end.x if side < 2 else bounds.end.y)*2.0+10,index/8.0)
+			var at := Vector3(across,0,bounds.position.y*2-12) if side == 0 else Vector3(across,0,bounds.end.y*2+12) if side == 1 else Vector3(bounds.position.x*2-12,0,across) if side == 2 else Vector3(bounds.end.x*2+12,0,across)
+			var height := 7.0+posmod(index*7+side*3,5)
+			skyline.box(Vector3(12,height,12),at+Vector3.UP*height/2,Color("293c4a"))
+			skyline.box(Vector3(13,0.35,13),at+Vector3.UP*height,Color("354954"))
+	var distant := skyline.finish(parent,"DistantFoundrySilhouette")
+	distant.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 static func dungeon_layout(walkable: Dictionary, seed_value: int) -> Dictionary:
 	var floors: Array[Transform3D] = []
@@ -73,17 +123,17 @@ static func _masonry(parent: Node3D, walkable: Dictionary, seed_value: int) -> v
 			bake.frame = Transform3D(Basis(Vector3.UP, atan2(normal.x,normal.z)), Vector3(cell.x*2,0,cell.y*2) + Vector3(direction.x,0,direction.y)*1.04)
 			# Shallow staggered stone faces use the existing wall for collision.
 			for course in 3:
-				var tone := Color("697b80").lightened(posmod(cell.x*7+cell.y*3+course,5)*0.015)
+				var tone := Color("526873").lightened(posmod(cell.x*7+cell.y*3+course,7)*0.016)
 				if course % 2 == 0:
-					for x in [-0.5,0.5]: bake.box(Vector3(0.96,0.81,0.075), Vector3(x,0.48+course*0.9,0.02),tone)
+					for x in [-0.5,0.5]: bake.box(Vector3(0.97,0.855,0.075), Vector3(x,0.48+course*0.9,0.02),tone)
 				else:
-					bake.box(Vector3(0.96,0.81,0.075),Vector3(0,1.38,0.02),tone)
-					for x in [-0.76,0.76]: bake.box(Vector3(0.44,0.81,0.075), Vector3(x,1.38,0.02),tone.darkened(0.025))
-			bake.box(Vector3(2.0,0.16,0.12), Vector3(0,2.78,0.01), Color("929580"))
+					bake.box(Vector3(0.97,0.855,0.075),Vector3(0,1.38,0.02),tone)
+					for x in [-0.76,0.76]: bake.box(Vector3(0.455,0.855,0.075), Vector3(x,1.38,0.02),tone.darkened(0.025))
+			bake.box(Vector3(2.0,0.16,0.12), Vector3(0,2.78,0.01), Color("7f8b83"))
 			var along: int = cell.x if direction.y != 0 else cell.y
 			if posmod(along,3) == 0:
-				bake.box(Vector3(0.34,2.8,0.24), Vector3(0,1.4,0.045), Color("89928a"))
-				for height in [0.18,2.62]: bake.box(Vector3(0.48,0.24,0.3),Vector3(0,height,0.065),Color("a3a48c"))
+				bake.box(Vector3(0.34,2.8,0.24), Vector3(0,1.4,0.045), Color("73847f"))
+				for height in [0.18,2.62]: bake.box(Vector3(0.48,0.24,0.3),Vector3(0,height,0.065),Color("8d998b"))
 	var mesh := bake.finish(parent, "MasonryCourses")
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 

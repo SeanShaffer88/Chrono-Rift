@@ -7,6 +7,16 @@ const Grid = preload("res://scenes/georama/town_grid.gd")
 const Visuals = preload("res://scenes/georama/town_visuals.gd")
 
 func run_assertions() -> void:
+	var cells := {Vector2i(-7,3):true,Vector2i(-6,3):true,Vector2i(-7,5):true}
+	var coverage := {}
+	var valid_backing := true
+	for run: Rect2i in Art.backing_runs(cells):
+		for y in range(run.position.y,run.end.y):
+			for x in range(run.position.x,run.end.x):
+				var cell := Vector2i(x,y)
+				valid_backing = valid_backing and not cells.has(cell) and not coverage.has(cell)
+				coverage[cell] = true
+	check(valid_backing and coverage.size() == 8*9-cells.size(),"Solid backing exactly covers expanded asymmetric bounds without walkable cells or overlap")
 	var holder := Node3D.new()
 	root.add_child(holder)
 	for kind: String in Assets.MODELS:

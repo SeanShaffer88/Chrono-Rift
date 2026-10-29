@@ -6,7 +6,7 @@ var manual_time := 0.0
 var touch_index := -1
 var distance := 6.0
 var query := PhysicsShapeQueryParameters3D.new()
-var preferred_pitch := deg_to_rad(-28.0)
+var preferred_pitch := deg_to_rad(-40.0)
 
 func _init(owner: Node3D) -> void:
 	hero = owner
@@ -18,16 +18,17 @@ func _init(owner: Node3D) -> void:
 	hero.spring_arm.margin = 0.08
 	hero.camera.near = 0.08
 	distance = hero.camera_distance
-	preferred_pitch = hero.spring_arm.rotation.x
+	preferred_pitch = clampf(hero.spring_arm.rotation.x, deg_to_rad(-60), deg_to_rad(-35))
 
 func snap() -> void:
+	preferred_pitch = clampf(preferred_pitch, deg_to_rad(-60), deg_to_rad(-35))
 	hero.camera_pivot.global_position = hero.global_position + Vector3.UP * hero.camera_height
 	distance = hero.camera_distance
 	update(0.0)
 
 func orbit(yaw: float, pitch: float) -> void:
 	hero.camera_pivot.rotation.y += yaw
-	preferred_pitch = clampf(preferred_pitch + pitch, deg_to_rad(-55), deg_to_rad(-12))
+	preferred_pitch = clampf(preferred_pitch + pitch, deg_to_rad(-60), deg_to_rad(-35))
 	hero.spring_arm.rotation.x = preferred_pitch
 	manual_time = 0.8
 

@@ -25,7 +25,7 @@ var lock_marker: Label3D
 @export var deceleration: float = 50.0
 @export var turn_speed: float = 14.0
 @export var camera_distance: float = 6.0
-@export var camera_pitch_degrees: float = -28.0
+@export var camera_pitch_degrees: float = -40.0
 @export var camera_height: float = 1.4
 @export var camera_turn_speed: float = 2.5
 @export var lock_on_range: float = 9.0

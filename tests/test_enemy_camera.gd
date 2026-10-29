@@ -191,9 +191,9 @@ func run_assertions() -> void:
 	for i in 150: hero.camera_rig.update(0.016)
 	check(absf(hero.spring_arm.spring_length - hero.camera_distance) < 0.01, "Camera returns to desired distance")
 	hero.camera_rig.orbit(0.1, 100.0)
-	check(is_equal_approx(hero.spring_arm.rotation.x, deg_to_rad(-12)), "Camera tilt clamps at upper limit")
+	check(is_equal_approx(hero.spring_arm.rotation.x, deg_to_rad(-35)), "Camera tilt clamps at upper limit")
 	hero.camera_rig.orbit(0.0, -100.0)
-	check(is_equal_approx(hero.spring_arm.rotation.x, deg_to_rad(-55)), "Camera tilt clamps at lower limit")
+	check(is_equal_approx(hero.spring_arm.rotation.x, deg_to_rad(-60)), "Camera tilt clamps at lower limit")
 	hero.camera_rig.orbit(0.0, deg_to_rad(27))
 	barrier = wall(Vector3(0, 1.4, 1.0), Vector3(8, 2.8, 0.2))
 	await physics_frame
