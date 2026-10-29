@@ -1,8 +1,15 @@
 extends RefCounted
-## Original primitive architecture. Shells, doors and furniture are physical.
+## Fitted authored panels and original geometry. Doors/furniture remain physical.
 
-const Scenery = preload("res://scripts/utilities/scenery.gd")
 const Factory := preload("res://scripts/utilities/primitive_mesh_factory.gd")
+const Assets = preload("res://scripts/utilities/environment_assets.gd")
+const EnvironmentArt = preload("res://scenes/environment/environment_art.gd")
+const Paper = preload("res://scenes/environment/papercraft.gd")
+
+static func panel(parent: Node3D, size: Vector3, at: Vector3, yaw: float, preview: bool, window: bool = false) -> void:
+	var collision_size := Vector3(size.z, size.y, size.x) if absf(sin(yaw)) > 0.5 else size
+	box(parent, collision_size, at + Vector3.UP * size.y / 2, Color.WHITE, not preview).hide()
+	parent.add_child(Assets.fit("window_wall" if window else "wood_wall", size, at, yaw))
 
 static func box(parent: Node3D, size: Vector3, position: Vector3, color: Color, solid: bool = false) -> MeshInstance3D:
 	var mesh := Factory.create_box(size, color)
@@ -27,46 +34,46 @@ static func make(piece: Resource, record: Dictionary, preview: bool = false) -> 
 	var depth: float = piece.dimensions.y * 2.0
 	var components: Dictionary = record.components
 	if piece.piece_id in ["path", "bridge", "river"]:
-		box(root, Vector3(width, 0.05, depth), Vector3.ZERO, Color(0.1, 0.45, 0.65) if piece.piece_id == "river" else Color(0.4, 0.31, 0.2))
+		var surface := box(root, Vector3(width, 0.05, depth), Vector3.ZERO, Color(0.1, 0.45, 0.65) if piece.piece_id == "river" else Color(0.4, 0.31, 0.2))
+		if piece.piece_id == "river":
+			surface.material_override = EnvironmentArt.river()
 		if piece.piece_id == "bridge":
 			for side in [-1, 1]:
-				box(root, Vector3(0.12, 0.12, depth), Vector3(side * (width / 2 - 0.15), 0.75, 0), Color("785334"))
+				box(root, Vector3(width, 0.12, 0.12), Vector3(0, 0.75, side * (depth / 2 - 0.15)), Color("785334")).name = "BridgeRail%d" % side
 				for end in [-1, 1]:
-					box(root, Vector3(0.18, 1.0, 0.18), Vector3(side * (width / 2 - 0.15), 0.5, end * (depth / 2 - 0.15)), Color("67452e"))
-			for plank in int(depth / 0.4):
-				box(root, Vector3(width, 0.08, 0.34), Vector3(0, 0.06, -depth / 2 + 0.2 + plank * 0.4), Color("aa7d4c"))
+					box(root, Vector3(0.18, 1.0, 0.18), Vector3(end * (width / 2 - 0.15), 0.5, side * (depth / 2 - 0.15)), Color("67452e"))
+			for plank in int(width / 0.4):
+				box(root, Vector3(0.34, 0.08, depth), Vector3(-width / 2 + 0.2 + plank * 0.4, 0.06, 0), Color("aa7d4c"))
 	elif piece.piece_id == "tree":
 		box(root, Vector3(0.5, 2.5, 0.5), Vector3(0, 1.25, 0), Color(0.3, 0.2, 0.12), not preview)
-		Scenery.add(root, "tree", Vector3.ZERO, 1.8)
+		Paper.tree(root, Vector3.ZERO, 1.8, not preview)
 	else:
-		var stone := Color("e1c89b")
 		var timber := Color("62432f")
 		for x in [-width / 2 + 0.08, width / 2 - 0.08]:
 			for z in [-depth / 2 + 0.08, depth / 2 - 0.08]:
 				box(root, Vector3(0.28, 2.6, 0.28), Vector3(x, 1.3, z), timber)
 		for z in [-depth / 2 - 0.02, depth / 2 + 0.02]:
 			box(root, Vector3(width, 0.2, 0.24), Vector3(0, 2.52, z), timber)
-		# Shutters flank the entrance, outside its walkable opening.
-		for side in [-1, 1]:
-			box(root, Vector3(0.8, 0.85, 0.15), Vector3(side * width * 0.31, 1.55, -depth / 2 - 0.09), Color("406479"))
 		box(root, Vector3(width - 0.2, 0.04, depth - 0.2), Vector3(0, 0.02, 0), Color(0.4, 0.29, 0.18))
-		box(root, Vector3(0.2, 2.5, depth), Vector3(-width / 2 + 0.1, 1.25, 0), stone, not preview)
-		box(root, Vector3(0.2, 2.5, depth), Vector3(width / 2 - 0.1, 1.25, 0), stone, not preview)
-		box(root, Vector3(width, 2.5, 0.2), Vector3(0, 1.25, depth / 2 - 0.1), stone, not preview)
+		panel(root, Vector3(depth, 2.5, 0.2), Vector3(-width / 2 + 0.1, 0, 0), PI / 2, preview)
+		panel(root, Vector3(depth, 2.5, 0.2), Vector3(width / 2 - 0.1, 0, 0), -PI / 2, preview)
+		panel(root, Vector3(width, 2.5, 0.2), Vector3(0, 0, depth / 2 - 0.1), PI, preview)
 		var segment := (width - 1.5) / 2
 		for side in [-1, 1]:
-			box(root, Vector3(segment, 2.5, 0.2), Vector3(side * (0.75 + segment / 2), 1.25, -depth / 2 + 0.1), stone, not preview)
+			panel(root, Vector3(segment, 2.5, 0.2), Vector3(side * (0.75 + segment / 2), 0, -depth / 2 + 0.1), 0, preview, true)
 		if components.has("Roof"):
-			var roof := MeshInstance3D.new()
+			var roof := Assets.fit("roof", Vector3(width + 0.5, 1.6, depth + 0.5), Vector3(0, 2.4, 0))
 			roof.name = "Roof"
-			var prism := PrismMesh.new()
-			prism.size = Vector3(width + 0.5, 1.6, depth + 0.5)
-			roof.mesh = prism
-			roof.material_override = Factory.get_shared_material(Color("b84e35"))
-			roof.position.y = 3.2
+			for entry: Dictionary in Assets.meshes(roof):
+				var original := entry.node.mesh.surface_get_material(0) as StandardMaterial3D
+				if original != null and not preview:
+					var material := Paper.material(Color.WHITE, original.albedo_texture, false, true)
+					material.set_shader_parameter("palette_texture", original.albedo_texture)
+					entry.node.material_override = material
 			root.add_child(roof)
-			Scenery.add(roof, "lantern", Vector3(width * 0.3, -1.4, -depth / 2 - 0.2), 0.8)
-			box(root, Vector3(0.5, 1.5, 0.5), Vector3(width / 3, 3.4, depth / 4), stone)
+			for side in [-1, 1]:
+				box(roof, Vector3(width + 0.5, 0.045, 0.12), Vector3(0, 0.025, side * (depth + 0.4) / 2), Color("d7c59d"))
+			roof.add_child(Assets.fit("chimney", Vector3(0.55, 1.5, 0.55), Vector3(width / 3, 0.2, depth / 4)))
 		if not preview:
 			var door := StaticBody3D.new()
 			door.name = "Door"
@@ -85,10 +92,14 @@ static func make(piece: Resource, record: Dictionary, preview: bool = false) -> 
 			root.add_child(door)
 		if components.has("Bed"):
 			box(root, Vector3(1.4, 0.5, 2.0), Vector3(-width / 2 + 1.2, 0.25, 0.6), Color(0.25, 0.35, 0.6), not preview).name = "Bed"
+			box(root, Vector3(1.5, 0.12, 2.1), Vector3(-width / 2 + 1.2, 0.12, 0.6), Color("67452e"))
+			box(root, Vector3(1.1, 0.13, 0.4), Vector3(-width / 2 + 1.2, 0.56, 1.25), Color("e3d9be"))
 		if components.has("Stove"):
 			box(root, Vector3(0.8, 1.0, 0.8), Vector3(width / 2 - 1, 0.5, 0.8), Color(0.25, 0.25, 0.26), not preview).name = "Stove"
 		if components.has("Wheel"):
-			box(root, Vector3(0.4, 2.0, 2.0), Vector3(width / 2 + 0.25, 1.0, 0), Color(0.32, 0.2, 0.1), not preview)
+			root.add_child(Assets.fit("wheel", Vector3(0.4, 2.0, 2.0), Vector3(width / 2 + 0.25, 0, 0)))
+	if not preview:
+		Paper.apply(root)
 	return root
 
 static func resident(name: String) -> Node3D:

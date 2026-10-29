@@ -1,5 +1,8 @@
 # Procedural energy shader: Inspector tuning
 
+Town paper, layered river and dungeon vent steam tuning is documented in
+[ENVIRONMENT_ART.md](ENVIRONMENT_ART.md#shader-inspector-tuning).
+
 Used for the small dark red companion core and amber enemy windup sector.
 Source: assets/shaders/procedural_energy.gdshader. Presets:
 assets/shaders/companion_energy.tres and assets/shaders/attack_warning.tres.
