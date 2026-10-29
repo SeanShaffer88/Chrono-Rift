@@ -1,0 +1,38 @@
+name: Headless tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Godot 4.3-stable
+        run: |
+          curl -sSL -o godot.zip https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mv Godot_v4.3-stable_linux.x86_64 "$RUNNER_TEMP/godot"
+          "$RUNNER_TEMP/godot" --version
+
+      - name: Build import cache
+        run: |
+          timeout 300 "$RUNNER_TEMP/godot" --headless --path . --editor --quit || true
+          timeout 300 "$RUNNER_TEMP/godot" --headless --path . --editor --quit || true
+
+      - name: Run tests
+        run: |
+          status=0
+          for test in tests/test_*.gd; do
+            [ "$test" = "tests/test_harness_template.gd" ] && continue
+            echo "::group::$test"
+            if ! timeout 120 "$RUNNER_TEMP/godot" --headless --path . -s "$test"; then
+              echo "::error::$test failed"
+              status=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $status

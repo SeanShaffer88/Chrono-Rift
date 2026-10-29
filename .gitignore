@@ -1,0 +1,9 @@
+# Godot 4 editor cache and imports
+.godot/
+/android/
+
+# Export output and signing
+*.apk
+*.aab
+*.keystore
+export_credentials.cfg
