@@ -59,11 +59,15 @@ func run_assertions() -> void:
 	var factory := Floor.new()
 	root.add_child(factory)
 	var layout: Dictionary = {}
+	var region_layouts: Dictionary = {}
 	for number in range(1,7):
 		check(Regions.for_floor(number)==["foundry","frost","overgrown_rail"][(number-1)%3],"Floor %d derives its expected biome" % number)
 		check(factory.generate(1337,number,false),"Biome floor %d generates" % number)
 		if number==1: layout=factory.layout.walkable.duplicate()
-		check(factory.layout.walkable==layout,"Biome choice preserves seeded gameplay layout %d" % number)
+		var region: String=Regions.for_floor(number)
+		if not region_layouts.has(region): region_layouts[region]=factory.layout.walkable.duplicate()
+		check(factory.layout.walkable==region_layouts[region] and factory.layout.distances_from(factory.spawn_cell).size()==factory.layout.walkable.size(),"Biome room style is deterministic and connected %d" % number)
+		if region=="foundry": check(factory.layout.walkable==layout,"Foundry preserves its original seeded layout")
 	check(Regions.for_floor(-1)=="foundry" and Regions.normalized("untrusted")=="foundry","Invalid biome inputs fall back to Foundry")
 	for id: String in Parts.MODELS:
 		var biome := "frost" if id in ["valve","piston"] else "overgrown_rail"

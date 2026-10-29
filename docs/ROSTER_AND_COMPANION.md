@@ -48,6 +48,6 @@ switch cancellation, pause/resume, death, reset, radius, occlusion, worlds,
 guarded keys, full-health healing and exit exclusion. Graphical capture script:
 tests/fixtures/roster_visual_fixture.gd.
 
-Battlemage uses stable ID battlemage and protected battlemage_staff, with the existing shared melee timing, hitbox and balance. Save format 3 requires all five inventories and an explicit secret unlock flag; older formats are preserved without migration. The responsive menu uses two columns at viewport widths of 680 or greater, one column below, a scrolling card area and pinned Close. Current additions have targeted native validation; full and Android validation are pending the current scope freeze.
+Battlemage uses stable ID battlemage and protected battlemage_staff, with the existing shared melee timing, hitbox and balance. Save format 4 requires all five inventories and an explicit secret unlock flag; older formats are preserved without migration. The responsive menu uses two columns at viewport widths of 680 or greater, one column below, a scrolling card area and pinned Close. Current additions have targeted native validation; full and Android validation are pending the current scope freeze.
 
 Devourer unlocks after clearing floor6 and is weaponless. See DEVOURER.md for the strict current save and acknowledged swallow contracts.

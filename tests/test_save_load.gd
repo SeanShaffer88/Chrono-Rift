@@ -81,6 +81,15 @@ func run_assertions() -> void:
 	secret=data.duplicate(true)
 	secret.inventories.erase("battlemage")
 	check(not Data.validate(secret), "Current schema requires every owned inventory")
+	var invalid_encounter := data.duplicate(true)
+	invalid_encounter.floor.encounters[0].hp=41
+	check(not Data.validate(invalid_encounter),"Encounter HP cannot exceed its role bound")
+	invalid_encounter=data.duplicate(true)
+	invalid_encounter.floor.encounters[1].id=invalid_encounter.floor.encounters[0].id
+	check(not Data.validate(invalid_encounter),"Duplicate encounter IDs are rejected")
+	invalid_encounter=data.duplicate(true)
+	invalid_encounter.floor.erase("encounters")
+	check(not Data.validate(invalid_encounter),"Current schema requires bounded encounter records")
 	var store := Store.new(path, Data.validate)
 	check(store.read_save().status == "missing", "Missing save starts a new session")
 	check(store.write_save(data) == OK and FileAccess.file_exists(path + ".bak"), "First durable write creates a recovery backup")

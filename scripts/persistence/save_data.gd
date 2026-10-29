@@ -61,6 +61,13 @@ static func validate(data: Dictionary) -> bool:
 	var floor_state: Variant = data.get("floor")
 	if not floor_state is Dictionary or not floor_state.get("key") is bool or not floor_state.get("guard_defeated") is bool or not number(floor_state.get("guard_hp"), 0, 60, true):
 		return false
+	if not floor_state.get("encounters") is Array or floor_state.encounters.size()!=3: return false
+	var encounter_ids := {}
+	var maximums := {"hunter":40,"bruiser":60,"sentry":30}
+	for entry: Variant in floor_state.encounters:
+		if not entry is Dictionary or entry.size()!=2 or not entry.get("id") is String or not maximums.has(entry.id) or encounter_ids.has(entry.id): return false
+		if not number(entry.get("hp"),0,maximums[entry.id],true): return false
+		encounter_ids[entry.id]=true
 	if floor_state.key and not floor_state.guard_defeated or floor_state.guard_defeated != (floor_state.guard_hp == 0):
 		return false
 	if not floor_state.get("healing") is Array or floor_state.healing.size() > 3:

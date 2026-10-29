@@ -1,5 +1,12 @@
 extends "res://scenes/characters/training_dummy.gd"
 ## One reusable melee enemy. The arena's stationary dummies remain separate.
+const Profiles=preload("res://scripts/combat/enemy_profiles.gd")
+const Bolt=preload("res://scripts/combat/enemy_projectile.gd")
+var role := "guard"
+var profile: Dictionary
+var committed_heading := Vector3.FORWARD
+var dash_remaining := 0.0
+var projectiles: Array[Node3D] = []
 const Sight = preload("res://scripts/combat/combat_visibility.gd")
 const Hitbox = preload("res://scripts/combat/hitbox_3d.gd")
 const Factory = preload("res://scripts/utilities/primitive_mesh_factory.gd")
@@ -29,7 +36,10 @@ var sight_query := PhysicsRayQueryParameters3D.new()
 var attack_contacts: Dictionary = {}
 
 func _ready() -> void:
+	profile=Profiles.profile(role)
+	if role!="guard": max_hp=int(profile.hp)
 	super._ready()
+	if role!="guard": $Body.mesh=preload("res://scripts/utilities/enemy_art.gd").role_mesh(role,art_biome)
 	respawn_delay = 1e20
 	home = global_position
 	last_seen = home
@@ -52,6 +62,7 @@ func _ready() -> void:
 	club.mesh = preload("res://scripts/utilities/enemy_art.gd").club_mesh()
 	club.material_override = preload("res://scripts/utilities/paper_geometry.gd").material(Color.WHITE)
 	club.position = Vector3(0.5, 1.0, -0.6)
+	club.visible=role in ["guard","bruiser"]
 	add_child(club)
 	_build_warning()
 
@@ -59,6 +70,14 @@ func _build_warning() -> void:
 	warning = Node3D.new()
 	warning.name = "AttackWarning"
 	add_child(warning)
+	if role!="guard":
+		var shape := MeshInstance3D.new()
+		shape.mesh=preload("res://scripts/utilities/enemy_art.gd").warning_mesh(role)
+		shape.material_override=preload("res://scripts/utilities/paper_geometry.gd").material(Color.WHITE)
+		shape.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		warning.add_child(shape)
+		warning.hide()
+		return
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for index in 12:
@@ -86,10 +105,16 @@ func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 	if not is_alive():
 		return
+	var before := global_position
 	tick_brain(delta)
 	if not is_on_floor():
 		velocity.y -= 9.8 * delta
 	move_and_slide()
+	if role=="hunter" and state==State.ACTIVE:
+		dash_remaining=maxf(0,dash_remaining-Vector2(global_position.x-before.x,global_position.z-before.z).length())
+		for index in get_slide_collision_count():
+			if get_slide_collision(index).get_normal().dot(committed_heading)<-0.2: dash_remaining=0
+		if dash_remaining<=0.001: _set_state(State.RECOVERY)
 
 func valid_player(node: Node3D) -> bool:
 	return is_instance_valid(node) and node.is_inside_tree() and node.get_world_3d() == get_world_3d() and node.is_visible_in_tree() and node.is_in_group(&"players") and node.has_method("is_alive") and node.is_alive()
@@ -133,21 +158,30 @@ func tick_brain(delta: float) -> void:
 		_set_state(State.RECOVERY)
 	match state:
 		State.WINDUP:
-			club.rotation.x = -state_time / WINDUP_TIME
-			if state_time >= WINDUP_TIME:
+			club.rotation.x = -state_time / float(profile.windup)
+			if role=="hunter":
+				$Body.position.y=0.76
+				$Body.rotation.x=0.28
+			elif role=="bruiser": $Body.position.y=0.95
+			elif role=="sentry": $Body.rotation.x=-0.10
+			if state_time >= float(profile.windup):
 				_set_state(State.ACTIVE)
 		State.ACTIVE:
+			if role=="hunter":
+				var speed := minf(8.0,dash_remaining/maxf(delta,0.0001))
+				velocity.x=committed_heading.x*speed
+				velocity.z=committed_heading.z*speed
 			club.rotation.x = 0.8
 			# Rejected dodge hits may retry inside this window; accepted hits dedup.
 			for id: int in attack_contacts:
 				var area = attack_contacts[id]
 				if is_instance_valid(area):
 					try_attack_hit(area)
-			if state_time >= ACTIVE_TIME:
+			if state_time >= float(profile.active):
 				_set_state(State.RECOVERY)
 		State.RECOVERY:
-			club.rotation.x = lerpf(0.8, 0.0, minf(state_time / RECOVERY_TIME, 1.0))
-			if state_time >= RECOVERY_TIME:
+			club.rotation.x = lerpf(0.8, 0.0, minf(state_time / float(profile.recovery), 1.0))
+			if state_time >= float(profile.recovery):
 				_set_state(State.PURSUIT if valid_player(target) else State.PATROL)
 		State.STAGGER:
 			$Body.rotation.z = -0.15 * (1.0 - minf(state_time / STAGGER_TIME, 1.0))
@@ -159,7 +193,7 @@ func tick_brain(delta: float) -> void:
 					_set_state(State.PURSUIT)
 				var offset := target.global_position - global_position
 				offset.y = 0
-				if offset.length() <= ATTACK_RANGE and Sight.clear_between(self, target, sight_query):
+				if offset.length() <= float(profile.range) and Sight.clear_between(self, target, sight_query):
 					rotation.y = atan2(-offset.x, -offset.z)
 					_set_state(State.WINDUP)
 				else:
@@ -197,22 +231,31 @@ func _set_state(value: State) -> void:
 	state_time = 0.0
 	path_refresh = 0.0
 	path.clear()
-	attack_box.set_active(value == State.ACTIVE)
+	attack_box.set_active(value == State.ACTIVE and role!="sentry")
 	attack_contacts.clear()
 	warning.visible = value == State.WINDUP
+	if value==State.WINDUP:
+		committed_heading=(-global_basis.z).normalized()
+		dash_remaining=2.8
+	if role=="sentry" and value==State.ACTIVE: _fire_bolt()
+	if role!="guard" and value!=State.WINDUP:
+		$Body.position.y=0.9
+		$Body.rotation.x=0
+	if role=="hunter" and value!=State.ACTIVE: velocity=Vector3.ZERO
+	if value==State.DEAD: cancel_projectiles()
 	if value != State.STAGGER:
 		$Body.rotation.z = 0.0
 	if value in [State.STAGGER, State.DEAD]:
 		velocity = Vector3.ZERO
 
 func _on_attack_entered(area: Area3D) -> void:
-	if state != State.ACTIVE or not is_alive() or not is_instance_valid(area):
+	if role=="sentry" or state != State.ACTIVE or not is_alive() or not is_instance_valid(area):
 		return
 	attack_contacts[area.get_instance_id()] = area
 	try_attack_hit(area)
 
 func try_attack_hit(area: Area3D) -> bool:
-	if state != State.ACTIVE or not is_alive() or not is_instance_valid(area):
+	if role=="sentry" or state != State.ACTIVE or not is_alive() or not is_instance_valid(area):
 		return false
 	var receiver := area.get_parent() as Node3D
 	if not valid_player(receiver):
@@ -221,16 +264,51 @@ func try_attack_hit(area: Area3D) -> bool:
 	offset.y = 0
 	if offset.length() > ATTACK_RANGE + 0.2 or (offset.length() > 0.01 and (-global_basis.z).dot(offset.normalized()) < cos(deg_to_rad(55))):
 		return false
-	return attack_box.try_hit(area, self, DAMAGE) != null
+	return attack_box.try_hit(area, self, int(profile.damage)) != null
+
+func _fire_bolt() -> void:
+	for index in range(projectiles.size()-1,-1,-1):
+		if not is_instance_valid(projectiles[index]) or projectiles[index].is_queued_for_deletion(): projectiles.remove_at(index)
+	if projectiles.size()>=2 or not is_alive(): return
+	var bolt := Bolt.new()
+	bolt.source=self
+	bolt.heading=committed_heading
+	var holder: Node=get_parent()
+	if is_instance_valid(floor_owner) and is_instance_valid(floor_owner.content): holder=floor_owner.content
+	holder.add_child(bolt)
+	bolt.global_position=global_position+Vector3.UP*0.9+committed_heading*0.65
+	projectiles.append(bolt)
+
+func cancel_projectiles() -> void:
+	for bolt in projectiles:
+		if is_instance_valid(bolt): bolt.finish()
+	projectiles.clear()
+
+func _exit_tree() -> void:
+	cancel_projectiles()
+
+func receive_combat_hit(damage: int,source: Node,_elements: Dictionary,_slayers: Dictionary,swallow: bool=false) -> Dictionary:
+	if damage<=0 or not is_alive(): return {"accepted":false,"damage":0,"swallowed":false}
+	var consumed := swallow and not is_boss and is_alive()
+	var resolved := current_hp if consumed else damage
+	var armored := false
+	if not consumed and role=="bruiser" and state in [State.PATROL,State.PURSUIT,State.WINDUP,State.ACTIVE] and source is Node3D and is_instance_valid(source):
+		var incoming: Vector3=source.global_position-global_position
+		incoming.y=0
+		armored=incoming.length_squared()>0.0001 and (-global_basis.z).dot(incoming.normalized())>=cos(deg_to_rad(60))
+		if armored: resolved=maxi(1,ceili(resolved*0.5))
+	var accepted := _receive_resolved_hit(resolved,source,not armored)
+	return {"accepted":accepted,"damage":resolved if accepted else 0,"swallowed":consumed and accepted}
 
 func receive_hit(damage: int, source: Node) -> bool:
-	if not super.receive_hit(damage, source):
-		return false
-	if not is_alive():
-		_set_state(State.DEAD)
+	return _receive_resolved_hit(damage,source,true)
+
+func _receive_resolved_hit(damage: int,source: Node,allow_stagger: bool) -> bool:
+	if not super.receive_hit(damage,source): return false
+	if not is_alive(): _set_state(State.DEAD)
 	else:
 		if source is Node3D and valid_player(source):
-			target = source
-			last_seen = source.global_position
-		_set_state(State.STAGGER)
+			target=source
+			last_seen=source.global_position
+		if allow_stagger: _set_state(State.STAGGER)
 	return true

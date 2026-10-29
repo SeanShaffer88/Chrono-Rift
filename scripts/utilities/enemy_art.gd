@@ -49,3 +49,67 @@ static func club_mesh() -> Mesh:
 	_meshes.club=bake.finish(holder,"CuttingTool").mesh
 	holder.free()
 	return _meshes.club
+
+# Role silhouettes reuse the biome palette; all combinations are finite and cached.
+static func role_mesh(role: String,biome: String) -> Mesh:
+	var key := role if role in ["hunter","bruiser","sentry"] else "guard"
+	if key=="guard": return mesh(biome,false)
+	var region := biome if biome in ["foundry","frost","overgrown_rail"] else "foundry"
+	var cache := "role:"+key+":"+region
+	if _meshes.has(cache): return _meshes[cache]
+	var bake := Bake.new()
+	var brass := Color("8d946a") if region=="overgrown_rail" else Color("9eaeb2") if region=="frost" else Color("a38b5d")
+	var bone := Color("ded6b9")
+	var dark := Color("303f42")
+	var amber := Color("e5ab57")
+	if key=="hunter":
+		bake.box(Vector3(0.40,0.42,0.50),Vector3(0,-0.05,-0.05),dark,Vector3(-0.24,0,0))
+		for side in [-1,1]:
+			bake.beam(Vector3(side*0.21,0.12,0.1),Vector3(side*0.36,-0.36,-0.10),0.12,brass)
+			bake.beam(Vector3(side*0.36,-0.36,-0.10),Vector3(side*0.28,-0.72,0.16),0.095,bone)
+			bake.box(Vector3(0.18,0.12,0.48),Vector3(side*0.28,-0.73,-0.04),brass)
+			bake.beam(Vector3(side*0.18,0.35,-0.18),Vector3(side*0.30,0.06,-0.40),0.08,bone)
+		bake.box(Vector3(0.36,0.26,0.36),Vector3(0,0.27,-0.20),brass)
+		bake.box(Vector3(0.27,0.05,0.04),Vector3(0,0.28,-0.40),amber)
+	elif key=="bruiser":
+		bake.box(Vector3(0.70,0.77,0.52),Vector3(0,0.03,0),dark)
+		for side in [-1,1]:
+			bake.box(Vector3(0.32,0.33,0.46),Vector3(side*0.43,0.30,-0.05),brass)
+			bake.pipe(Vector3(side*0.38,0.12,0),Vector3(side*0.47,-0.40,-0.09),0.12,bone)
+			bake.box(Vector3(0.27,0.20,0.42),Vector3(side*0.24,-0.70,-0.06),brass)
+		for row in 3: bake.box(Vector3(0.66,0.12,0.10),Vector3(0,0.28-row*0.19,-0.30),bone)
+		bake.box(Vector3(0.35,0.32,0.35),Vector3(0,0.63,0),brass)
+		bake.box(Vector3(0.26,0.05,0.04),Vector3(0,0.65,-0.20),amber)
+	else:
+		bake.box(Vector3(0.38,0.56,0.34),Vector3(0,0.03,0),dark)
+		for side in [-1,1]:
+			bake.beam(Vector3(side*0.10,-0.15,0),Vector3(side*0.28,-0.72,0.08),0.10,bone)
+			bake.box(Vector3(0.22,0.12,0.38),Vector3(side*0.28,-0.74,-0.06),brass)
+			bake.box(Vector3(0.19,0.26,0.35),Vector3(side*0.26,0.24,0),brass)
+		bake.box(Vector3(0.30,0.31,0.30),Vector3(0,0.58,0),bone)
+		bake.pipe(Vector3(0,0.25,-0.1),Vector3(0,0.25,-0.72),0.115,brass)
+		bake.box(Vector3(0.14,0.05,0.04),Vector3(0,0.60,-0.18),amber)
+	var holder := Node3D.new()
+	_meshes[cache]=bake.finish(holder,"RoleBody").mesh
+	holder.free()
+	return _meshes[cache]
+
+static func warning_mesh(role: String) -> Mesh:
+	var key := "warning:"+role
+	if _meshes.has(key): return _meshes[key]
+	var bake := Bake.new()
+	var color := Color("d9a751")
+	# Solid strips sit above paving; shape communicates the action without color.
+	if role=="bruiser":
+		for angle in [-50,-25,0,25,50]:
+			var tip := Vector3(sin(deg_to_rad(angle))*1.8,0.065,-cos(deg_to_rad(angle))*1.8)
+			bake.beam(Vector3(0,0.065,-0.25),tip,0.065,color)
+	else:
+		var length := 2.8 if role=="hunter" else 7.0
+		bake.box(Vector3(0.075,0.025,length),Vector3(0,0.065,-length/2),color)
+		if role=="hunter":
+			for side in [-1,1]: bake.beam(Vector3(0,0.065,-length),Vector3(side*0.27,0.065,-length+0.45),0.075,color)
+	var holder := Node3D.new()
+	_meshes[key]=bake.finish(holder,"RoleWarning").mesh
+	holder.free()
+	return _meshes[key]

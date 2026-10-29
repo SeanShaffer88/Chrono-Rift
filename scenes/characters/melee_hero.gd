@@ -46,6 +46,12 @@ var _dodge_cooldown_left := 0.0
 
 func _ready() -> void:
 	super._ready()
+	var audio := preload("res://scripts/combat/combat_audio.gd").shared()
+	if audio!=null:
+		attack_started.connect(func(_step: int): audio.play_cue("attack",0.85 if character_id=="swordsman" else 1.1 if character_id=="riftwarden" else 1.0))
+		hit_landed.connect(func(_target: Node,_damage: int,_step: int): audio.play_cue("hit"))
+		dodge_started.connect(func(_direction: Vector3): audio.play_cue("dodge"))
+		damaged.connect(func(): audio.play_cue("damage"))
 	weapon_hitbox.collision_layer = layer_bit(LAYER_PLAYER_HITBOX)
 	weapon_hitbox.collision_mask = layer_bit(LAYER_ENEMY_HURTBOX)
 	weapon_hitbox.monitorable = false

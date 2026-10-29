@@ -45,11 +45,17 @@ func _try_hit(area: Area3D, source: Node, damage: int, elements: Dictionary = {}
 	# Reserve before any receiver-owned resolver or damage callback can reenter.
 	_hit_targets[id] = true
 	var swallowed := false
-	if swallow and receiver.has_method("get_swallow_damage"):
+	if not target.has_method("receive_combat_hit") and swallow and receiver.has_method("get_swallow_damage"):
 		damage = int(receiver.get_swallow_damage(damage))
 		swallowed = not bool(receiver.get("is_boss"))
 	var accepted := false
-	if target.has_method("receive_weapon_hit"):
+	if target.has_method("receive_combat_hit"):
+		var result: Dictionary=target.receive_combat_hit(damage,source,elements.duplicate(true),slayers.duplicate(true),swallow)
+		accepted=result.get("accepted",false)==true
+		if accepted:
+			damage=int(result.get("damage",damage))
+			swallowed=result.get("swallowed",false)==true
+	elif target.has_method("receive_weapon_hit"):
 		accepted = target.call("receive_weapon_hit", damage, source, elements.duplicate(true), slayers.duplicate(true)) == true
 	elif target.has_method("receive_hit"):
 		accepted = target.call("receive_hit", damage, source) == true

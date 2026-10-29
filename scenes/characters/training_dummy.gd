@@ -46,6 +46,13 @@ func _physics_process(delta: float) -> void:
 func get_swallow_damage(ordinary_damage: int) -> int:
 	return current_hp if is_alive() and not is_boss else ordinary_damage
 
+func receive_combat_hit(damage: int,source: Node,_elements: Dictionary,_slayers: Dictionary,swallow: bool=false) -> Dictionary:
+	if damage<=0 or not is_alive(): return {"accepted":false,"damage":0,"swallowed":false}
+	var consumed := swallow and not is_boss and is_alive()
+	var resolved := current_hp if consumed else damage
+	var accepted := receive_hit(resolved,source)
+	return {"accepted":accepted,"damage":resolved if accepted else 0,"swallowed":consumed and accepted}
+
 func receive_hit(damage: int, _source: Node) -> bool:
 	if damage <= 0 or not is_alive():
 		return false
