@@ -228,10 +228,9 @@ func _on_weapon_equipped(weapon: Resource) -> void:
 	$Visual/WeaponPivot/Blade.visible = weapon != null
 	var blade: MeshInstance3D = $Visual/WeaponPivot/Blade
 	var wrench: bool = weapon != null and weapon.weapon_id == "battle_wrench"
-	# Per-instance mesh avoids changing other heroes or cached scene resources.
-	var shape := BoxMesh.new()
-	shape.size = Vector3(0.14, 0.14, 0.9) if wrench else Vector3(0.16, 0.05, 1.1)
-	blade.mesh = shape
+	var art := preload("res://scripts/utilities/weapon_art.gd")
+	blade.mesh = art.mesh(weapon.weapon_id if weapon != null else "battle_wrench")
+	blade.material_override = art.material()
 	for jaw: Node3D in blade.get_children():
 		jaw.visible = wrench
 	var chain: Node3D = blade.get_node_or_null("ChainBlade")
@@ -241,8 +240,6 @@ func _on_weapon_equipped(weapon: Resource) -> void:
 	chain.visible = weapon != null and weapon.weapon_id == "rift_chain"
 	if chain.visible:
 		blade.mesh = null
-	elif weapon != null and weapon.weapon_id == "duskblade":
-		shape.size = Vector3(0.11, 0.05, 1.35)
 
 func _animate_weapon() -> void:
 	if not is_instance_valid(weapon_pivot):

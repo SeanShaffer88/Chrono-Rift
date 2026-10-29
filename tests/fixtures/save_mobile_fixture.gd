@@ -31,7 +31,7 @@ func _run() -> void:
 		dungeon.floor_number = 4
 		dungeon.dungeon_seed = 981
 		dungeon._load_floor()
-		state.swap_character("rift_warden")
+		state.swap_character("riftwarden")
 		var weapon: Resource = state.weapon_inventory.equipped_weapon
 		weapon.base_attack = 31
 		weapon.elemental_stats[2] = 9
@@ -66,7 +66,7 @@ func _run() -> void:
 		await get_tree().create_timer(1.0).timeout
 		print("SAVE_QA READY: background-town")
 	elif phase == "town":
-		_check(state.active_character_id == "rift_warden", "active character survived process restart")
+		_check(state.active_character_id == "riftwarden", "active character survived process restart")
 		var weapon: Resource = state.weapon_inventory.equipped_weapon
 		_check(weapon.is_broken and not weapon.destroy_on_break and weapon.base_attack == 31, "protected broken weapon and trained attack restored")
 		_check(weapon.elemental_stats[2] == 9 and weapon.slayer_stats[3] == 7, "integer-key stats restored from JSON")
@@ -95,6 +95,6 @@ func _run() -> void:
 		print("SAVE_QA READY: corrupt-primary")
 	elif phase == "recovery":
 		_check(dungeon.save_session.status.contains("Recovered"), "cold startup recovered validated backup")
-		_check(state.active_character_id == "rift_warden" and dungeon.floor_number == 4 and dungeon.floor_generator.key_collected, "backup preserved owned progress")
+		_check(state.active_character_id == "riftwarden" and dungeon.floor_number == 4 and dungeon.floor_generator.key_collected, "backup preserved owned progress")
 		_check(dungeon.save_session.flush() == OK, "recovered game can write a valid new primary")
 		print("SAVE_QA COMPLETE")

@@ -5,6 +5,7 @@ extends CharacterBody3D
 
 signal hp_changed(current_hp: int, max_hp: int)
 signal died
+signal damaged
 
 const LAYER_ENVIRONMENT := 1
 const LAYER_PLAYER := 2
@@ -288,6 +289,7 @@ func take_damage(amount: int) -> bool:
 		return false
 	current_hp = maxi(0, current_hp - amount)
 	hp_changed.emit(current_hp, max_hp)
+	damaged.emit()
 	var bus := Services.event_bus()
 	if is_player and bus:
 		bus.player_damaged.emit(current_hp, max_hp)
