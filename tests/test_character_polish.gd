@@ -6,9 +6,42 @@ const Services = preload("res://scripts/utilities/services.gd")
 
 func run_assertions() -> void:
 	check(Roster.HEROES.has("riftwarden") and Roster.HEROES.riftwarden.name == "Riftwarden" and not Roster.HEROES.has("rift_warden"), "Riftwarden uses one display word and one internal identifier")
-	for kind in ["round","torso","taper"]:
+	for kind in ["round","torso","taper","head","hair"]:
 		var mesh := Geometry.shape(kind)
 		check(mesh == Geometry.shape(kind) and mesh.get_surface_count() == 1, "Faceted %s geometry is cached and single-surface" % kind)
+	for kind in ["head","hair"]:
+		var mesh := Geometry.shape(kind)
+		var arrays := mesh.surface_get_arrays(0)
+		var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		var valid := true
+		for index in range(0,vertices.size(),3):
+			var a := vertices[index]
+			var b := vertices[index+1]
+			var c := vertices[index+2]
+			valid = valid and (b-a).cross(c-a).length_squared() > 0.00000001
+			var center := (a+b+c)/3
+			var outward := Vector3(center.x-(center.y*0.24 if kind == "hair" else 0.0),0,center.z)
+			if absf(normals[index].y) < 0.99: valid = valid and normals[index].dot(outward) > 0
+			if is_equal_approx(center.y,-0.5): valid = valid and normals[index].y < -0.99
+		check(valid,"%s geometry has outward flat normals, a closed base and no collapsed apex triangles" % kind)
+	var weapon := preload("res://scripts/utilities/chain_weapon_visual.gd").make()
+	var blade: Mesh = weapon.get_node("CrescentBlade").mesh
+	var faces := blade.get_faces()
+	var nondegenerate := faces.size() == (31*2+33*2)*3
+	for index in range(0,faces.size(),3): nondegenerate = nondegenerate and (faces[index+1]-faces[index]).cross(faces[index+2]-faces[index]).length_squared() > 0.00000001
+	check(nondegenerate,"Single crescent has a triangulated front/back and nondegenerate closed edges")
+	weapon.free()
+	var holder := Node3D.new()
+	var bake := preload("res://scripts/utilities/art_mesh.gd").new()
+	bake.cutout(PackedVector2Array([Vector2(-1,-1),Vector2(1,-1),Vector2(1,1),Vector2(-1,1)]),0.2,Transform3D.IDENTITY,Color.WHITE,Color.WHITE)
+	var arrays := bake.finish(holder,"WindingProbe").mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var outward := true
+	for index in vertices.size(): outward = outward and vertices[index].dot(normals[index]) > 0
+	check(outward,"Shared cutout front, back and edge normals point outward under backface culling")
+	holder.free()
 	var idle := Motion.sample(0,0.5,0,0,1,0,false)
 	var run := Motion.sample(6,0.5,0,0,1,0,false)
 	var dodge := Motion.sample(0,0,4,0,1,0,false)

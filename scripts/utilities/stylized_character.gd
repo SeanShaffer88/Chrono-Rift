@@ -17,7 +17,7 @@ var variant_nodes: Dictionary = {"swordsman": [], "riftwarden": []}
 
 func part(label: String, size: Vector3, at: Vector3, color: Color) -> MeshInstance3D:
 	var mesh := MeshInstance3D.new()
-	var kind := "taper" if label.begins_with("HairTuft") or label.begins_with("Fringe") else "torso" if label in ["Tunic","Belt","Scarf"] else "round"
+	var kind := "head" if label == "Head" else "hair" if label == "Hair" else "taper" if label.begins_with("HairTuft") or label.begins_with("Fringe") else "torso" if label in ["Tunic","Belt","Scarf"] else "round"
 	mesh.mesh = Geometry.shape(kind)
 	mesh.scale = size
 	mesh.material_override = Factory.get_shared_material(color)
@@ -37,19 +37,19 @@ func _ready() -> void:
 	part("Belt", Vector3(0.69, 0.11, 0.44), Vector3(0, 0.7, 0), Color("392c2c"))
 	part("Buckle", Vector3(0.16, 0.12, 0.06), Vector3(0, 0.7, -0.25), Color("d6a652"))
 	part("Head", Vector3(0.7, 0.62, 0.6), Vector3(0, 1.65, -0.02), skin)
-	part("Nose",Vector3(0.10,0.12,0.09),Vector3(0,1.62,-0.33),skin)
+	part("Nose",Vector3(0.08,0.10,0.075),Vector3(0,1.62,-0.33),skin)
 	part("Mouth",Vector3(0.10,0.025,0.025),Vector3(0,1.51,-0.3),Color("805344"))
-	part("Hair", Vector3(0.78, 0.22, 0.69), Vector3(0, 1.98, 0.02), Color("493026"))
+	part("Hair", Vector3(0.84, 0.48, 0.75), Vector3(0, 1.91, 0.02), Color("493026"))
 	part("HairBack", Vector3(0.75, 0.42, 0.2), Vector3(0, 1.75, 0.3), Color("493026"))
 	for index in 3:
 		var tuft := part("HairTuft%d" % index, Vector3(0.3, 0.16, 0.42), Vector3((index - 1) * 0.19, 2.035, 0.04), Color("593729"))
 		tuft.rotation.z = (index - 1) * 0.45
 		tuft.rotation.x = -0.35
 	for side in [-1, 1]:
-		var fringe := part("Fringe%d" % side, Vector3(0.27, 0.24, 0.16), Vector3(side * 0.23, 1.86, -0.32), Color("593729"))
+		var fringe := part("Fringe%d" % side, Vector3(0.27, 0.21, 0.17), Vector3(side * 0.23, 1.89, -0.27), Color("593729"))
 		fringe.rotation.z = PI + side * 0.2
-		part("Eye%d" % side, Vector3(0.07, 0.1, 0.025), Vector3(side * 0.17, 1.65, -0.33), Color("242739"))
-		part("EyeWhite%d" % side,Vector3(0.14,0.12,0.025),Vector3(side*0.17,1.66,-0.315),Color("eee4d0"))
+		part("Eye%d" % side, Vector3(0.055, 0.09, 0.018), Vector3(side * 0.17, 1.65, -0.315), Color("242739"))
+		part("EyeWhite%d" % side,Vector3(0.095,0.10,0.018),Vector3(side*0.17,1.65,-0.305),Color("eee4d0"))
 		var brow := part("Brow%d" % side,Vector3(0.16,0.035,0.04),Vector3(side*0.17,1.76,-0.30),Color("493026"))
 		brow.rotation.z = side*0.13
 		part("Sleeve%d" % side, Vector3(0.24, 0.3, 0.34), Vector3(side * 0.44, 1.12, 0), leather)
@@ -94,6 +94,11 @@ func _ready() -> void:
 	for side in [-1, 1]:
 		variant_nodes.riftwarden.append(part("GreenEye%d" % side, Vector3(0.13, 0.04, 0.025), Vector3(side * 0.17, 1.7, -0.41), Color("5ac798")))
 	variant_nodes.riftwarden.append(part("RiftClasp", Vector3(0.18, 0.18, 0.1), Vector3(0, 1.33, -0.3), Color("17b8da")))
+	var strap := part("ChestStrap",Vector3(0.10,0.64,0.045),Vector3(0.04,1.02,-0.218),Color("42342e"))
+	strap.rotation.z = -0.52
+	part("StrapBuckle",Vector3(0.14,0.13,0.055),Vector3(0.07,1.05,-0.25),Color("b79a61"))
+	for side in [-1,1]:
+		part("Knee%d" % side,Vector3(0.22,0.18,0.10),Vector3(side*0.19,0.43,-0.15),Color("54483b"))
 	# Replace hanging blocks with thick, original cut silhouettes.
 	_contour($ScarfTail,PackedVector2Array([Vector2(-0.15,0.28),Vector2(0.15,0.28),Vector2(0.22,-0.27),Vector2(0.04,-0.2),Vector2(-0.1,-0.34)]),Color("187d97"),Color("379db0"))
 	_contour($LongHair,PackedVector2Array([Vector2(-0.35,0.5),Vector2(0.35,0.5),Vector2(0.38,-0.45),Vector2(0.13,-0.33),Vector2(0,-0.55),Vector2(-0.2,-0.38),Vector2(-0.35,-0.46)]),Color("cbd0df"),Color("9ca5ba"))
@@ -135,7 +140,8 @@ func apply_character(id: String) -> void:
 			child.visible = id == "melee_hero"
 		if child is MeshInstance3D:
 			if str(child.name).begins_with("Eye") or child.name in ["Nose","Mouth"]: child.visible = not warden
-			if str(child.name).begins_with("HairTuft") or str(child.name).begins_with("Fringe") or str(child.name).begins_with("Brow"): child.visible = not warden
+			if str(child.name).begins_with("Fringe") or str(child.name).begins_with("Brow"): child.visible = not warden
+			if child.name == "HairBack" or str(child.name).begins_with("HairTuft"): child.visible = false
 			var color: Variant = null
 			if str(child.name).begins_with("Hair") or str(child.name).begins_with("Fringe") or str(child.name).begins_with("Brow"):
 				color = Color("d5d8e4") if silver else (Color("252c3b") if warden else Color("493026"))

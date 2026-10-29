@@ -21,26 +21,19 @@ static func make() -> Node3D:
 	link_batch.multimesh = links
 	link_batch.material_override = Factory.get_shared_material(Color("82939d"),0.45)
 	root.add_child(link_batch)
-	var surface := SurfaceTool.new()
-	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for side in [-1, 1]:
-		for index in 12:
-			var a := float(index) / 12 * PI * 0.9
-			var b := float(index + 1) / 12 * PI * 0.9
-			var inner_a := lerpf(0.23, 0.43, pow(float(index) / 12, 4))
-			var inner_b := lerpf(0.23, 0.43, pow(float(index + 1) / 12, 4))
-			var points := [Vector3(cos(a) * 0.43, side * 0.035, -0.65 - sin(a) * 0.43), Vector3(cos(b) * 0.43, side * 0.035, -0.65 - sin(b) * 0.43), Vector3(cos(a) * inner_a, side * 0.035, -0.65 - sin(a) * inner_a), Vector3(cos(b) * inner_b, side * 0.035, -0.65 - sin(b) * inner_b)]
-			for vertex in ([0, 1, 2, 1, 3, 2] if side == 1 else [2, 1, 0, 2, 3, 1]):
-				surface.add_vertex(points[vertex])
-	var blade := MeshInstance3D.new()
-	surface.generate_normals()
-	blade.mesh = surface.commit()
-	var material := Factory.get_shared_material(Color("b0c4cd"), 0.35).duplicate() as StandardMaterial3D
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	blade.material_override = material
-	root.add_child(blade)
-	var mount := Factory.create_box(Vector3(0.5, 0.1, 0.12), Color("4bbba4"))
-	mount.position = Vector3(0.2, 0, -0.5)
+	var outline := PackedVector2Array()
+	for index in 17:
+		var angle := index*PI*0.9/16
+		outline.append(Vector2(cos(angle)*0.43,-0.65-sin(angle)*0.43))
+	for index in range(15,-1,-1):
+		var angle := index*PI*0.9/16
+		var radius := lerpf(0.23,0.43,pow(float(index)/16,4))
+		outline.append(Vector2(cos(angle)*radius,-0.65-sin(angle)*radius))
+	var bake := preload("res://scripts/utilities/art_mesh.gd").new()
+	bake.cutout(outline,0.065,Transform3D(Basis(Vector3.RIGHT,PI/2),Vector3.ZERO),Color("c1d1d4"),Color("849ca6"))
+	bake.finish(root,"CrescentBlade")
+	var mount := Factory.create_box(Vector3(0.22,0.10,0.12),Color("8a7957"))
+	mount.position = Vector3(0.32,0,-0.57)
 	mount.rotation.y = 0.58
 	root.add_child(mount)
 	return root

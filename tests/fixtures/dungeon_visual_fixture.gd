@@ -25,6 +25,21 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	viewport.get_texture().get_image().save_png(output.path_join("Visual-pass-guard.png"))
 	hero.set_physics_process(false)
+	# Actual player camera at four asymmetric boundary corners; no detached art camera.
+	var cells: Dictionary = dungeon.floor_generator.layout.walkable
+	var extremes: Array[Vector2i] = []
+	for direction in [Vector2i(-1,-1),Vector2i(1,-1),Vector2i(1,1),Vector2i(-1,1)]:
+		var best: Vector2i = cells.keys()[0]
+		for cell: Vector2i in cells:
+			if cell.x*direction.x+cell.y*direction.y > best.x*direction.x+best.y*direction.y: best=cell
+		for yaw in [0.0,PI/2,PI,3*PI/2]:
+			hero.position = Vector3(best.x*2,0.15,best.y*2)
+			hero.camera_pivot.rotation.y = yaw
+			hero.camera_rig.snap()
+			for frame in 3: await process_frame
+			await RenderingServer.frame_post_draw
+			viewport.get_texture().get_image().save_png(output.path_join("Corner-%d-%d.png" % [extremes.size(),roundi(yaw*2/PI)]))
+		extremes.append(best)
 	var gate = dungeon.floor_generator.content.get_node("ExitGate")
 	var camera := Camera3D.new()
 	dungeon.add_child(camera)
