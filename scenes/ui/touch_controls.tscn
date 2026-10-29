@@ -1,0 +1,64 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/virtual_joystick.tscn" id="3_joystick"]
+[ext_resource type="Script" path="res://scenes/ui/touch_action_button.gd" id="4_button"]
+
+[node name="TouchUI" type="CanvasLayer"]
+
+[node name="VirtualJoystick" parent="." instance=ExtResource("3_joystick")]
+
+[node name="AttackButton" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -180.0
+offset_top = -180.0
+offset_right = -60.0
+offset_bottom = -60.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("4_button")
+action = &"attack"
+label_text = "ATK"
+
+[node name="DodgeButton" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -130.0
+offset_right = -210.0
+offset_bottom = -40.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("4_button")
+action = &"dodge"
+label_text = "DODGE"
+font_size = 16
+
+[node name="LockOnButton" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -150.0
+offset_top = -300.0
+offset_right = -60.0
+offset_bottom = -210.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("4_button")
+action = &"lock_on"
+label_text = "LOCK"
+font_size = 16

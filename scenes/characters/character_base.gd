@@ -47,6 +47,7 @@ func _ready() -> void:
 	ensure_input_actions()
 	current_hp = max_hp
 	if is_player:
+		add_to_group(&"players")
 		collision_layer = layer_bit(LAYER_PLAYER)
 		collision_mask = layer_bit(LAYER_ENVIRONMENT) | layer_bit(LAYER_ENEMIES)
 	else:
@@ -86,8 +87,9 @@ static func ensure_input_actions() -> void:
 			InputMap.action_add_event(action, event)
 
 func _physics_process(delta: float) -> void:
-	_tick(delta)
-	if is_player:
+	if not is_dead():
+		_tick(delta)
+	if is_player and not is_dead():
 		camera_pivot.rotation.y -= Input.get_axis(&"camera_left", &"camera_right") * camera_turn_speed * delta
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
@@ -114,7 +116,7 @@ func _tick(_delta: float) -> void:
 	pass
 
 func can_move() -> bool:
-	return true
+	return not is_dead()
 
 func can_turn() -> bool:
 	return can_move()
@@ -161,7 +163,7 @@ func is_lock_on_held() -> bool:
 ## Keeps the current target while lock-on is held and it stays in range;
 ## otherwise picks the nearest enemy inside the forward cone.
 func update_lock_on() -> void:
-	if not is_lock_on_held() or not is_inside_tree():
+	if is_dead() or not is_lock_on_held() or not is_inside_tree():
 		_set_lock_target(null)
 		return
 	if _is_valid_target(lock_target, lock_on_range * 1.25, -1.0):
@@ -239,8 +241,14 @@ func take_damage(amount: int) -> bool:
 	if is_player and bus:
 		bus.player_damaged.emit(current_hp, max_hp)
 	if current_hp == 0:
+		_on_death()
 		died.emit()
 	return true
+
+func _on_death() -> void:
+	velocity.x = 0.0
+	velocity.z = 0.0
+	_set_lock_target(null)
 
 func heal(amount: int) -> void:
 	if amount <= 0 or is_dead():

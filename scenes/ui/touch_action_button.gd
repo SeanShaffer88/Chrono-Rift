@@ -18,7 +18,11 @@ func is_pressed() -> bool:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
-		if event.pressed and _touch_index == -1 and _contains(event.position):
+		if event.canceled:
+			if event.index == _touch_index:
+				_release()
+			return
+		if event.pressed and is_visible_in_tree() and _touch_index == -1 and _contains(event.position):
 			_touch_index = event.index
 			Input.action_press(action)
 			queue_redraw()
@@ -28,7 +32,9 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_EXIT_TREE and is_pressed():
+	if what in [NOTIFICATION_EXIT_TREE, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_WINDOW_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED] and is_pressed():
+		_release()
+	elif what == NOTIFICATION_VISIBILITY_CHANGED and not is_visible_in_tree() and is_pressed():
 		_release()
 
 func _release() -> void:

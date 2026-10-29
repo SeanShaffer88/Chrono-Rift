@@ -13,6 +13,8 @@ enum CombatState { FREE, WINDUP, ACTIVE, RECOVERY, DODGING }
 const LAYER_PLAYER_HITBOX := 4
 const LAYER_ENEMY_HURTBOX := 7
 const SWING_ANGLE := 1.1
+const WeaponInventory := preload("res://scripts/inventory/weapon_inventory.gd")
+var weapon_inventory: Node = null
 
 ## Per-swing timings in seconds; lunge is forward speed during windup/active.
 const COMBO_STEPS := [
@@ -21,7 +23,6 @@ const COMBO_STEPS := [
 	{"windup": 0.14, "active": 0.16, "recovery": 0.40, "damage_mult": 1.6, "lunge": 3.0},
 ]
 
-@export var base_damage: int = 15
 @export var dodge_speed: float = 11.0
 @export var dodge_duration: float = 0.42
 @export var dodge_iframe_duration: float = 0.28
@@ -38,7 +39,6 @@ var _state_time := 0.0
 var _buffered_attack_time := 0.0
 var _dodge_direction := Vector3.ZERO
 var _dodge_cooldown_left := 0.0
-var _hit_this_swing: Dictionary = {}
 
 @onready var weapon_pivot: Node3D = $Visual/WeaponPivot
 @onready var weapon_hitbox: Area3D = $Visual/WeaponPivot/WeaponHitbox
@@ -50,6 +50,16 @@ func _ready() -> void:
 	weapon_hitbox.monitorable = false
 	weapon_hitbox.monitoring = false
 	weapon_hitbox.area_entered.connect(_on_weapon_hitbox_area_entered)
+	if weapon_inventory == null:
+		var state := Services.game_state()
+		if is_player and state:
+			weapon_inventory = state.weapon_inventory
+		else:
+			weapon_inventory = WeaponInventory.new()
+			add_child(weapon_inventory)
+			weapon_inventory.reset()
+	weapon_inventory.equipped_changed.connect(_on_weapon_equipped)
+	_on_weapon_equipped(weapon_inventory.equipped_weapon)
 
 func _tick(delta: float) -> void:
 	if is_player:
@@ -63,6 +73,8 @@ func _tick(delta: float) -> void:
 
 ## Starts, buffers or chains an attack. Returns true if the press was used.
 func request_attack() -> bool:
+	if is_dead() or weapon_inventory.equipped_weapon == null:
+		return false
 	var last_step := COMBO_STEPS.size() - 1
 	match combat_state:
 		CombatState.FREE:
@@ -81,6 +93,8 @@ func request_attack() -> bool:
 ## Dodges in the stick direction, or backsteps with no input. Allowed from
 ## free movement and attack recovery.
 func request_dodge() -> bool:
+	if is_dead():
+		return false
 	if combat_state != CombatState.FREE and combat_state != CombatState.RECOVERY:
 		return false
 	if _dodge_cooldown_left > 0.0:
@@ -97,6 +111,8 @@ func request_dodge() -> bool:
 
 ## Advances the combat state machine. Called from _tick; tests may call it directly.
 func tick_combat(delta: float) -> void:
+	if is_dead():
+		return
 	_dodge_cooldown_left = maxf(0.0, _dodge_cooldown_left - delta)
 	_buffered_attack_time = maxf(0.0, _buffered_attack_time - delta)
 	if combat_state == CombatState.FREE:
@@ -122,9 +138,9 @@ func tick_combat(delta: float) -> void:
 	_animate_weapon()
 
 func get_current_attack_damage() -> int:
-	if combo_step < 0:
+	if combo_step < 0 or weapon_inventory.equipped_weapon == null:
 		return 0
-	return roundi(base_damage * float(_current_step()["damage_mult"]))
+	return roundi(weapon_inventory.equipped_weapon.get_effective_attack() * float(_current_step()["damage_mult"]))
 
 func is_attacking() -> bool:
 	return combat_state == CombatState.WINDUP or combat_state == CombatState.ACTIVE or combat_state == CombatState.RECOVERY
@@ -132,12 +148,14 @@ func is_attacking() -> bool:
 # --- Base class hooks --------------------------------------------------------
 
 func can_move() -> bool:
-	return combat_state == CombatState.FREE
+	return not is_dead() and combat_state == CombatState.FREE
 
 func can_turn() -> bool:
-	return combat_state == CombatState.FREE or (combat_state == CombatState.WINDUP and _state_time < 0.05)
+	return not is_dead() and (combat_state == CombatState.FREE or (combat_state == CombatState.WINDUP and _state_time < 0.05))
 
 func get_forced_velocity() -> Vector3:
+	if is_dead():
+		return Vector3.ZERO
 	match combat_state:
 		CombatState.WINDUP, CombatState.ACTIVE:
 			return facing_direction * float(_current_step()["lunge"])
@@ -150,6 +168,12 @@ func is_invulnerable() -> bool:
 	return combat_state == CombatState.DODGING and _state_time < dodge_iframe_duration
 
 # --- Internals ---------------------------------------------------------------
+
+func _on_death() -> void:
+	super._on_death()
+	combo_step = -1
+	_buffered_attack_time = 0.0
+	_enter_state(CombatState.FREE)
 
 func _current_step() -> Dictionary:
 	return COMBO_STEPS[clampi(combo_step, 0, COMBO_STEPS.size() - 1)]
@@ -174,12 +198,16 @@ func _enter_state(state: CombatState) -> void:
 	_animate_weapon()
 
 func _set_hitbox_active(active: bool) -> void:
-	if active:
-		_hit_this_swing.clear()
 	if hitbox_active == active:
 		return
 	hitbox_active = active
-	weapon_hitbox.set_deferred("monitoring", active)
+	weapon_hitbox.set_active(active)
+
+func _on_weapon_equipped(weapon: Resource) -> void:
+	combo_step = -1
+	_buffered_attack_time = 0.0
+	_enter_state(CombatState.FREE)
+	$Visual/WeaponPivot/Blade.visible = weapon != null
 
 func _animate_weapon() -> void:
 	if not is_instance_valid(weapon_pivot):
@@ -196,18 +224,14 @@ func _animate_weapon() -> void:
 	weapon_pivot.rotation.y = angle
 
 func _on_weapon_hitbox_area_entered(area: Area3D) -> void:
-	if not hitbox_active:
+	if is_dead() or not hitbox_active:
 		return
-	var target: Node = area if area.has_method("receive_hit") else area.get_parent()
-	if target == null or target == self:
+	var weapon: Resource = weapon_inventory.equipped_weapon
+	if weapon == null:
 		return
-	var id := target.get_instance_id()
-	if _hit_this_swing.has(id):
-		return
-	_hit_this_swing[id] = true
+	var step := combo_step
 	var damage := get_current_attack_damage()
-	if target.has_method("receive_hit"):
-		target.call("receive_hit", damage, self)
-	elif target.has_method("take_damage"):
-		target.call("take_damage", damage)
-	hit_landed.emit(target, damage, combo_step)
+	var target: Node = weapon_hitbox.try_hit(area, self, damage, weapon.elemental_stats, weapon.slayer_stats)
+	if target:
+		weapon_inventory.apply_hit_wear(weapon)
+		hit_landed.emit(target, damage, step)

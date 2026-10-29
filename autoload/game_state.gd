@@ -9,6 +9,13 @@ signal thirst_depleted
 const MAX_THIRST := 100.0
 
 const Services := preload("res://scripts/utilities/services.gd")
+const WeaponInventory := preload("res://scripts/inventory/weapon_inventory.gd")
+
+var weapon_inventory := WeaponInventory.new()
+
+func _ready() -> void:
+	add_child(weapon_inventory)
+	weapon_inventory.reset()
 
 @export var thirst_drain_per_second: float = 0.5
 
@@ -16,6 +23,23 @@ var mode: Mode = Mode.DUNGEON
 var active_character_id: String = "melee_hero"
 var thirst: float = MAX_THIRST
 var atla_inventory: Array[String] = []
+var collected_orb_ids: Dictionary = {}
+var town_objects: Dictionary = {}
+var town_services: Dictionary = {}
+var town_completed := false
+
+func has_collected_orb(orb_id: String) -> bool:
+	return collected_orb_ids.has(orb_id)
+
+func collect_restoration_orb(orb_id: String, piece_id: String) -> bool:
+	if orb_id.is_empty() or piece_id.is_empty() or collected_orb_ids.has(orb_id):
+		return false
+	collected_orb_ids[orb_id] = piece_id
+	atla_inventory.append(piece_id)
+	var bus := Services.event_bus()
+	if bus:
+		bus.atla_collected.emit(orb_id, piece_id)
+	return true
 
 func _process(delta: float) -> void:
 	if mode == Mode.DUNGEON:
@@ -58,6 +82,11 @@ func reset() -> void:
 	active_character_id = "melee_hero"
 	thirst = MAX_THIRST
 	atla_inventory.clear()
+	collected_orb_ids.clear()
+	town_objects.clear()
+	town_services.clear()
+	town_completed = false
+	weapon_inventory.reset()
 	_emit_thirst()
 
 func _emit_thirst() -> void:

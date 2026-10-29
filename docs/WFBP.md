@@ -1,5 +1,5 @@
 # Chrono Rift — Comprehensive Workflow Blueprint (WFBP v2.0)
-### Dark Cloud–Inspired Action-RPG & Georama Builder for Android (Godot 4.3 Engine)
+### Dark Cloud–Inspired Action-RPG & Georama Builder for Android (Godot 4.7.2 Engine)
 
 ---
 
@@ -13,14 +13,14 @@
 
 ## 1. Executive Architecture & Engine Mandates
 
-*   **Engine Target:** Godot Engine **4.3-stable** (`gl_compatibility` mobile rendering backend).
-*   **Target Platform:** Android (Min SDK 24, Target SDK 34, 64-bit ARM `arm64-v8a` primary target).
+*   **Engine Target:** Godot Engine **4.7.2-stable** (`gl_compatibility` mobile rendering backend).
+*   **Target Platform:** Android (Min SDK 24, Target SDK 36, 64-bit ARM `arm64-v8a` primary target).
 *   **Viewport & Resolution:** Landscape, Base Canvas `1280x720`, Stretch Mode: `canvas_items`, Aspect: `expand`.
 *   **Plain-Text Asset Contract:**
     *   No binary scene or project dependencies. All scenes (`.tscn`), resources (`.tres`), and scripts (`.gd`) are plain text.
     *   Zero external asset blockers: All geometry, characters, items, and structures generate procedurally via `PrimitiveMeshFactory` using standard flat-shaded materials until custom `.glb` meshes are dropped into `assets/`.
 *   **Decoupled Signal Infrastructure:**
-    *   Autoloads (`EventBus`, `GameState`) are never referenced by bare identifier: under `godot -s` (the test harness) Godot 4.3 does not register autoload names, so `EventBus` fails to compile. Scripts fetch them through `scripts/utilities/services.gd` and skip the emit when it returns null:
+    *   Autoloads (`EventBus`, `GameState`) are never referenced by bare identifier: the original Godot 4.3 baseline could not resolve autoload identifiers under `godot -s`. Keep the path-based lookup for headless harness compatibility. Scripts fetch them through `scripts/utilities/services.gd` and skip the emit when it returns null:
         ```gdscript
         const Services := preload("res://scripts/utilities/services.gd")
         var bus := Services.event_bus()
@@ -149,6 +149,21 @@ signal town_restoration_completed()
 ```
 
 ### 3.2 Weapon Data Model & Break Engine (`data/weapons/weapon_data.gd`)
+
+Implemented Phase 2 decisions: Battle Wrench is a protected starter; it remains
+repairable at zero WHP. Gladius and other ordinary weapons default to permanent
+loss on break. Build-up keeps trained attack/element/slayer values, restores full
+target WHP, and adopts the target's break policy. Runtime code and regression
+tests are authoritative over the illustrative schema below. Inventory UI,
+attachments, ABS leveling, and persistence remain subsequent work.
+
+User reference sources:
+- https://en.wikipedia.org/wiki/Dark_Cloud?useskin=vector
+- https://darkcloud.fandom.com/wiki/Dark_Cloud_Wiki:Main_Page
+
+The wiki covers both Dark Cloud and Dark Chronicle; use first-game mechanics
+when the two differ. Art direction is explored in the separate overall-game
+concept mockup; it is not an implemented gameplay screenshot.
 
 *   **Dark Cloud behaviour (default):** a weapon whose durability (WHP) reaches 0 breaks and is **lost**: the inventory removes it when `weapon_broken` fires and `destroy_on_break` is true. Repair Powder restores WHP before that happens.
 *   **Deviation (optional):** `destroy_on_break = false` keeps the broken weapon equipped with a 90% attack penalty until repaired, for an easier mode.
@@ -338,7 +353,7 @@ func _on_timeout() -> void:
 ### Phase 1: Engine Baseline, Touch Controls & Melee Combat
 
 ```text
-Act as an expert Godot 4.3 engine developer building "Chrono Rift", an Android action-RPG inspired by Dark Cloud.
+Act as an expert Godot 4.7.2 engine developer building "Chrono Rift", an Android action-RPG inspired by Dark Cloud.
 
 Execute Phase 1 with 100% complete, un-truncated GDScript and .tscn text files matching this topology:
 - project.godot (Configured for Android Landscape 1280x720, gl_compatibility, named 3D physics layers 1-8, touch emulation enabled)
@@ -364,7 +379,7 @@ CRITICAL CONSTRAINTS:
 ### Phase 2: Weapon Degradation, Build-Up & Inventory Engine
 
 ```text
-Act as an expert Godot 4.3 developer continuing "Chrono Rift". We are implementing the complete Dark Cloud-style weapon progression system.
+Act as an expert Godot 4.7.2 developer continuing "Chrono Rift". We are implementing the complete Dark Cloud-style weapon progression system.
 
 Generate 100% complete, un-truncated files for:
 - data/weapons/weapon_data.gd (Custom resource with class_name WeaponData, 5 Elements, 8 Slayers, current/max durability, degradation rate, destroy_on_break flag (Dark Cloud default: broken weapons are lost), get_effective_attack() with 90% penalty when soft-break is enabled, apply_degradation(), repair(), and can_build_up() branching evaluation)
@@ -383,8 +398,15 @@ CRITICAL CONSTRAINTS:
 
 ### Phase 3: Procedural BSP Dungeon & Atla Collection Engine
 
+Implemented: seeded BSP rooms and three-cell corridors; farthest-room exit;
+guarded key; three original cyan restoration orbs per floor; session-level
+orb-ID deduplication; shared/batched primitive visuals; physical walls and
+pickups; deferred floor transitions preserving inventory. Dungeon is the
+startup scene; `scenes/main.tscn` remains the training arena. Existing controls
+are reused without a UI redesign. Disk saves, final art and enemy AI are deferred.
+
 ```text
-Act as an expert Godot 4.3 developer continuing "Chrono Rift". We are building the procedural dungeon generator and Atla containment loop.
+Act as an expert Godot 4.7.2 developer continuing "Chrono Rift". We are building the procedural dungeon generator and Atla containment loop.
 
 Generate 100% complete, un-truncated files for:
 - scripts/utilities/bsp_tree.gd (Pure GDScript recursive binary space partitioning data structure for a 48x48 grid)
@@ -400,14 +422,23 @@ CRITICAL CONSTRAINTS:
 
 ### Phase 4: Georama Town Reconstruction & Satisfaction Engine
 
+User correction: match the first Dark Cloud's recovered-parts Georama loop.
+The earlier mobile construction-card dock is superseded by the approved
+Config/Assembly, Move/Remove, Analysis and Walking Mode mockup. Overhead editing
+and grounded exploration share the same physical town, with doors/interiors,
+resident arrival and in-person requests. Touch replaces controller input.
+The region has a finite recovered-part pool, not purchasable/timed construction.
+Prototype implementation includes service-unlock state; shop transactions,
+story content, final art and disk saves remain later work.
+
 ```text
-Act as an expert Godot 4.3 developer continuing "Chrono Rift". We are implementing the Georama town-reconstruction puzzle engine.
+Act as an expert Godot 4.7.2 developer continuing "Chrono Rift". We are implementing the Georama town-reconstruction puzzle engine.
 
 Generate 100% complete, un-truncated files for:
 - data/georama/georama_piece_data.gd (Resource with class_name GeoramaPieceData, piece_id, structure dimensions Vector2i, culture requirements, array of preference dictionaries)
 - data/georama/mayor_house.tres (Complete resource with preferences: proximity to water <= 4 tiles, facing East)
 - scenes/georama/town_grid.gd (Grid tracking system managing a 64x64 terrain grid, snapping structures in 90-degree increments, verifying boundaries, and live-evaluating neighbor/feature satisfaction)
-- scenes/georama/georama_manager.gd + .tscn (Top-down orthographic camera with touch pan, pinch-zoom, bottom dock UI for selecting unlocked Atla pieces, and placement commit/rollback)
+- scenes/georama/georama_manager.gd + .tscn (Overhead/third-person views of one physical town, command and assembly menus, touch pan/pinch/orbit/tilt, and transactional placement)
 - tests/test_georama_rules.gd (Headless test extending SceneTree that places mayor_house.tres on a mock grid, tests satisfaction calculation under failing vs satisfying conditions, and exits with quit(0))
 
 CRITICAL CONSTRAINTS:
@@ -419,11 +450,11 @@ CRITICAL CONSTRAINTS:
 ### Phase 5: Android Export Preset & Autonomous GitHub Actions CI
 
 ```text
-Act as an expert Godot 4.3 developer completing "Chrono Rift". We are packaging the project for mobile deployment.
+Act as an expert Godot 4.7.2 developer completing "Chrono Rift". We are packaging the project for mobile deployment.
 
 Generate 100% complete files for:
-- export_presets.cfg (Production-ready Godot 4 Android export configuration targeting arm64-v8a, landscape orientation, package name com.chronorift.game, Min SDK 24, Target SDK 34)
-- .github/workflows/build_android.yml (GitHub Actions workflow that checks out the repo, sets up Godot 4.3-stable headless, initializes editor cache, installs Android SDK/build-tools, runs all tests in tests/, exports the debug and release APK, and uploads them as build artifacts)
+- export_presets.cfg (Production-ready Godot 4 Android export configuration targeting arm64-v8a, landscape orientation, package name com.chronorift.game, Min SDK 24, Target SDK 36)
+- .github/workflows/build_android.yml (GitHub Actions workflow that checks out the repo, sets up Godot 4.7.2-stable headless, initializes editor cache, installs Android SDK/build-tools, runs all tests in tests/, exports the debug and release APK, and uploads them as build artifacts)
 - README.md (Setup instructions, touch control guide, and architecture overview)
 
 CRITICAL CONSTRAINTS:

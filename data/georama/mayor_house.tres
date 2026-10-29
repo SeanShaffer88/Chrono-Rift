@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="GeoramaPieceData" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/georama/georama_piece_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+piece_id = "mayor_house"
+display_name = "Elder's House"
+dimensions = Vector2i(3, 3)
+slots = {"Roof": "mayor_roof", "Door": "mayor_door", "Bed": "mayor_bed", "Stove": "mayor_stove", "Resident": "mayor_resident"}
+preferences = Array[Dictionary]([{"kind": "water", "distance": 4, "text": "I would like my home within four tiles of water."}, {"kind": "facing", "rotation": 1, "text": "Please face my door east."}])
+resident_name = "Elder Rowan"
+service = "storage"
