@@ -39,10 +39,15 @@ static func create_tile_batch(cells: Array, size: Vector3, color: Color, cell_si
 	var batch := MultiMesh.new()
 	batch.transform_format = MultiMesh.TRANSFORM_3D
 	batch.mesh = mesh
+	batch.use_colors = true
 	batch.instance_count = cells.size()
 	for index in cells.size():
 		var cell: Vector2i = cells[index]
+		var shade := 0.88 + float(posmod(cell.x * 31 + cell.y * 17, 9)) * 0.025
+		batch.set_instance_color(index, Color(shade, shade, shade))
 		batch.set_instance_transform(index, Transform3D(Basis.IDENTITY, Vector3(cell.x * cell_size, center_y, cell.y * cell_size)))
 	instance.multimesh = batch
-	instance.material_override = get_shared_material(color)
+	var material := get_shared_material(color).duplicate() as StandardMaterial3D
+	material.vertex_color_use_as_albedo = true
+	instance.material_override = material
 	return instance

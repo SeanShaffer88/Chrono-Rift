@@ -208,6 +208,14 @@ func _on_weapon_equipped(weapon: Resource) -> void:
 	_buffered_attack_time = 0.0
 	_enter_state(CombatState.FREE)
 	$Visual/WeaponPivot/Blade.visible = weapon != null
+	var blade: MeshInstance3D = $Visual/WeaponPivot/Blade
+	var wrench: bool = weapon != null and weapon.weapon_id == "battle_wrench"
+	# Per-instance mesh avoids changing other heroes or cached scene resources.
+	var shape := BoxMesh.new()
+	shape.size = Vector3(0.14, 0.14, 0.9) if wrench else Vector3(0.16, 0.05, 1.1)
+	blade.mesh = shape
+	for jaw: Node3D in blade.get_children():
+		jaw.visible = wrench
 
 func _animate_weapon() -> void:
 	if not is_instance_valid(weapon_pivot):

@@ -1,7 +1,9 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scenes/characters/character_base.gd" id="1_base"]
 [ext_resource type="Script" path="res://scripts/combat/hurtbox_3d.gd" id="2_hurtbox"]
+
+[ext_resource type="Script" path="res://scripts/utilities/stylized_character.gd" id="3_art"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.4
@@ -35,6 +37,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("CapsuleShape3D_body")
 
 [node name="Visual" type="Node3D" parent="."]
+script = ExtResource("3_art")
 
 [node name="Body" type="MeshInstance3D" parent="Visual"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)

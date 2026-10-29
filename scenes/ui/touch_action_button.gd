@@ -4,7 +4,7 @@ extends Control
 
 @export var action: StringName = &"attack"
 @export var label_text: String = "ATK"
-@export var idle_color: Color = Color(1.0, 1.0, 1.0, 0.25)
+@export var idle_color: Color = Color(0.04, 0.10, 0.16, 0.42)
 @export var pressed_color: Color = Color(1.0, 0.85, 0.4, 0.55)
 @export var font_size: int = 20
 
@@ -50,5 +50,6 @@ func _contains(pos: Vector2) -> bool:
 func _draw() -> void:
 	var r := minf(size.x, size.y) * 0.5
 	draw_circle(size * 0.5, r, pressed_color if is_pressed() else idle_color)
+	draw_arc(size * 0.5, r - 2.0, 0.0, TAU, 48, Color(0.75, 0.87, 0.9, 0.7), 2.0, true)
 	var font := ThemeDB.fallback_font
 	draw_string(font, Vector2(0.0, size.y * 0.5 + font_size * 0.35), label_text, HORIZONTAL_ALIGNMENT_CENTER, size.x, font_size)
