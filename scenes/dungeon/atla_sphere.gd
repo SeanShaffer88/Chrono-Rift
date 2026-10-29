@@ -23,6 +23,12 @@ func _ready() -> void:
 	mesh.name = "OrbVisual"
 	mesh.position.y = 0.9
 	add_child(mesh)
+	var seal := preload("res://scripts/utilities/art_mesh.gd").new()
+	for index in 12:
+		var a := index*TAU/12
+		var b := (index+1)*TAU/12
+		seal.pipe(Vector3(cos(a)*0.36,0,sin(a)*0.36),Vector3(cos(b)*0.36,0,sin(b)*0.36),0.025,Color("cfb97c"))
+	seal.finish(mesh,"OrbSeal")
 	body_entered.connect(try_collect)
 	var state := Services.game_state()
 	if state and state.has_collected_orb(orb_id):

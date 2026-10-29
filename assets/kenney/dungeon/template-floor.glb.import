@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cx31sthfxn8li"
-path="res://.godot/imported/template-floor-detail.glb-1e3c8076164f93ae3adf6ef09788bd27.scn"
+uid="uid://d1k860i62vswh"
+path="res://.godot/imported/template-floor.glb-d876574e6eeea8c283a30372d7edcaa8.scn"
 
 [deps]
 
-source_file="res://assets/kenney/dungeon/template-floor-detail.glb"
-dest_files=["res://.godot/imported/template-floor-detail.glb-1e3c8076164f93ae3adf6ef09788bd27.scn"]
+source_file="res://assets/kenney/dungeon/template-floor.glb"
+dest_files=["res://.godot/imported/template-floor.glb-d876574e6eeea8c283a30372d7edcaa8.scn"]
 
 [params]
 

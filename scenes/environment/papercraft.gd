@@ -3,6 +3,7 @@ extends RefCounted
 const Factory = preload("res://scripts/utilities/primitive_mesh_factory.gd")
 const SHADER = preload("res://assets/shaders/paper_surface.gdshader")
 const Assets = preload("res://scripts/utilities/environment_assets.gd")
+const Bake = preload("res://scripts/utilities/art_mesh.gd")
 
 static func material(color: Color, texture: Texture2D = null, vertex_colors: bool = false, roof: bool = false) -> ShaderMaterial:
 	var result := ShaderMaterial.new()
@@ -90,4 +91,25 @@ static func tree(parent: Node3D, at: Vector3, factor: float = 1.0, shaded: bool 
 	fallback.vertex_color_use_as_albedo = true
 	mesh.material_override = material(Color.WHITE, null, true) if shaded else fallback
 	root.add_child(mesh)
+	return root
+
+static func round_tree(parent: Node3D, at: Vector3, factor: float = 1.0, shaded: bool = true) -> Node3D:
+	var root := Node3D.new()
+	root.name = "RoundPaperTree"
+	root.position = at
+	root.scale = Vector3.ONE * factor
+	parent.add_child(root)
+	var bake := Bake.new()
+	bake.box(Vector3(0.24, 2.3, 0.18), Vector3(0, 1.15, 0), Color("79553c"))
+	for side in [-1, 1]:
+		bake.beam(Vector3(0,1.5,0), Vector3(side*0.6,2.2,0), 0.12, Color("79553c"))
+	for layer in 3:
+		var points := PackedVector2Array()
+		for index in 10:
+			var angle := index * TAU / 10
+			var radius := 1.05 + sin(index * 2.4 + layer) * 0.13
+			points.append(Vector2(cos(angle)*radius, sin(angle)*radius + 2.35))
+		var rotation := Basis(Vector3.UP, layer * PI / 3)
+		bake.cutout(points, 0.13, Transform3D(rotation, Vector3(0,layer*0.08,0)), Color("6f944e").lightened(layer*0.06), Color("e5d4a3"))
+	bake.finish(root, "FoldedCanopy", material(Color.WHITE, null, true) if shaded else null)
 	return root

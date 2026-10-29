@@ -5,6 +5,7 @@ const Factory := preload("res://scripts/utilities/primitive_mesh_factory.gd")
 const Assets = preload("res://scripts/utilities/environment_assets.gd")
 const EnvironmentArt = preload("res://scenes/environment/environment_art.gd")
 const Paper = preload("res://scenes/environment/papercraft.gd")
+const Details = preload("res://scenes/environment/town_details.gd")
 
 static func panel(parent: Node3D, size: Vector3, at: Vector3, yaw: float, preview: bool, window: bool = false) -> void:
 	var collision_size := Vector3(size.z, size.y, size.x) if absf(sin(yaw)) > 0.5 else size
@@ -46,7 +47,7 @@ static func make(piece: Resource, record: Dictionary, preview: bool = false) -> 
 				box(root, Vector3(0.34, 0.08, depth), Vector3(-width / 2 + 0.2 + plank * 0.4, 0.06, 0), Color("aa7d4c"))
 	elif piece.piece_id == "tree":
 		box(root, Vector3(0.5, 2.5, 0.5), Vector3(0, 1.25, 0), Color(0.3, 0.2, 0.12), not preview)
-		Paper.tree(root, Vector3.ZERO, 1.8, not preview)
+		Paper.round_tree(root, Vector3.ZERO, 1.8, not preview)
 	else:
 		var timber := Color("62432f")
 		for x in [-width / 2 + 0.08, width / 2 - 0.08]:
@@ -98,6 +99,7 @@ static func make(piece: Resource, record: Dictionary, preview: bool = false) -> 
 			box(root, Vector3(0.8, 1.0, 0.8), Vector3(width / 2 - 1, 0.5, 0.8), Color(0.25, 0.25, 0.26), not preview).name = "Stove"
 		if components.has("Wheel"):
 			root.add_child(Assets.fit("wheel", Vector3(0.4, 2.0, 2.0), Vector3(width / 2 + 0.25, 0, 0)))
+		Details.decorate(root, width, depth, components, preview)
 	if not preview:
 		Paper.apply(root)
 	return root

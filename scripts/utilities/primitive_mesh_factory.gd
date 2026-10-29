@@ -28,8 +28,10 @@ static func create_atla_sphere_mesh() -> MeshInstance3D:
 	var mesh := SphereMesh.new()
 	mesh.radius = 0.35
 	mesh.height = 0.7
+	mesh.radial_segments = 10
+	mesh.rings = 5
 	instance.mesh = mesh
-	instance.material_override = get_shared_material(Color(0.15, 0.8, 1.0), 0.25, 1.8)
+	instance.material_override = get_shared_material(Color("59c7cd"), 0.45, 0.35)
 	return instance
 
 static func create_tile_batch(cells: Array, size: Vector3, color: Color, cell_size: float, center_y: float) -> MultiMeshInstance3D:

@@ -6,6 +6,7 @@ const Factory := preload("res://scripts/utilities/primitive_mesh_factory.gd")
 enum Kind { KEY, EXIT }
 var kind: Kind = Kind.KEY
 var floor_owner: Node = null
+var gate_material: ShaderMaterial
 
 func _ready() -> void:
 	if kind == Kind.KEY:
@@ -20,18 +21,19 @@ func _ready() -> void:
 	collision.position.y = 0.8
 	add_child(collision)
 	if kind == Kind.KEY:
-		var mesh := Factory.create_box(Vector3(0.25, 0.65, 0.25), Color(1.0, 0.7, 0.1), 1.0)
-		mesh.position.y = 0.9
-		add_child(mesh)
+		preload("res://scenes/environment/pickup_art.gd").key(self)
 	else:
-		for x in [-1.0, 1.0]:
-			var pillar := Factory.create_box(Vector3(0.3, 2.4, 0.4), Color(0.15, 0.7, 1.0), 1.0)
-			pillar.position = Vector3(x, 1.2, 0)
-			add_child(pillar)
-		var lintel := Factory.create_box(Vector3(2.3, 0.3, 0.4), Color(0.15, 0.7, 1.0), 1.0)
-		lintel.position.y = 2.4
-		add_child(lintel)
+		gate_material = preload("res://scenes/environment/pickup_art.gd").gate(self)
+		_update_gate()
+		var bus := preload("res://scripts/utilities/services.gd").event_bus()
+		if bus: bus.dungeon_gate_unlocked.connect(_update_gate)
 	body_entered.connect(try_activate)
+
+func _update_gate() -> void:
+	if gate_material != null:
+		var unlocked: bool = is_instance_valid(floor_owner) and floor_owner.key_collected
+		gate_material.set_shader_parameter("rift_color", Color("57bcc5") if unlocked else Color("bc9b5b"))
+		gate_material.set_shader_parameter("opacity", 0.5 if unlocked else 0.18)
 
 func try_activate(body: Node3D) -> bool:
 	if not Orb.is_collector(body) or not is_instance_valid(floor_owner):

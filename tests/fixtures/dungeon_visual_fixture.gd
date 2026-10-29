@@ -24,4 +24,19 @@ func _run() -> void:
 	for i in 30: await process_frame
 	await RenderingServer.frame_post_draw
 	viewport.get_texture().get_image().save_png(output.path_join("Visual-pass-guard.png"))
+	hero.set_physics_process(false)
+	var gate = dungeon.floor_generator.content.get_node("ExitGate")
+	var camera := Camera3D.new()
+	dungeon.add_child(camera)
+	camera.position = gate.global_position + Vector3(0,1.7,2.8)
+	camera.look_at(gate.global_position + Vector3(0,1.25,0), Vector3.UP)
+	camera.make_current()
+	for i in 10: await process_frame
+	await RenderingServer.frame_post_draw
+	viewport.get_texture().get_image().save_png(output.path_join("Graphics-locked-gate.png"))
+	dungeon.floor_generator.key_collected = true
+	gate._update_gate()
+	for i in 10: await process_frame
+	await RenderingServer.frame_post_draw
+	viewport.get_texture().get_image().save_png(output.path_join("Graphics-unlocked-gate.png"))
 	quit()

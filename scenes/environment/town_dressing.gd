@@ -9,11 +9,18 @@ func _ready() -> void:
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for index in 5:
 		var x := (index - 2) * 0.16
+		surface.set_color(Color("668546"))
 		for point in [Vector3(x - 0.05, 0, 0), Vector3(x + 0.09, 0.18 + (index % 3) * 0.07, 0.06), Vector3(x + 0.08, 0, 0.1)]:
+			surface.add_vertex(point)
+	# Sparse tiny paper petals share the grass draw call and coverage mask.
+	for offset in [-0.24, 0.3]:
+		surface.set_color(Color("e0c780"))
+		for point in [Vector3(offset-0.065,0.17,0.02),Vector3(offset,0.26,0.045),Vector3(offset+0.065,0.17,0.02)]:
 			surface.add_vertex(point)
 	surface.generate_normals()
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color("5e853d")
+	material.albedo_color = Color.WHITE
+	material.vertex_color_use_as_albedo = true
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material.roughness = 1.0
 	surface.set_material(material)
