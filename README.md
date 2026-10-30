@@ -26,7 +26,7 @@ timing and storage details. The training arena and automated fixtures are isolat
 | Attack  | ATK                     | J / Space    |
 | Dodge   | DODGE                   | K / Shift    |
 | Lock-on | LOCK (hold)             | L / Tab (hold) |
-| Camera  | —                       | Q / E        |
+| Gameplay camera | Fixed isometric | Fixed isometric |
 
 ## Tests
 
@@ -143,10 +143,14 @@ Placement uses an internal 64×64, two-world-unit grid and quarter turns. Previe
 confirm and cancel are transactional. Footprints enforce bounds, water and overlap
 rules. The grid is not presented as an abstract city-building surface.
 
-Overhead and third-person modes use the same physical town objects. Camera view
-buttons allow orbit/tilt; two-finger drag/pinch/twist pans, zooms and rotates, and
+Overhead editing and fixed-isometric walking use the same physical town objects.
+In editing, camera view buttons allow orbit/tilt; two-finger drag/pinch/twist pans, zooms and rotates, and
 three-finger vertical drag tilts. Mouse wheel zooms; Q/E orbit, Z/X tilt, R rotates
 a selected foundation, arrows move it, Enter confirms and Escape cancels.
+
+Dungeon play and town walking keep the same fixed angle and framing; camera
+keys, drags and lock-on do not rotate it. Movement follows screen direction.
+Only blocking wall fragments fade locally. See [fixed camera settings](docs/FIXED_ISOMETRIC_CAMERA.md).
 
 House shells, openable doorways, roofs and recovered beds/stoves are 3D geometry
 with collision. Roofs hide when the hero is inside. Completed homes restore

@@ -10,7 +10,9 @@ const Details = preload("res://scenes/environment/town_details.gd")
 static func panel(parent: Node3D, size: Vector3, at: Vector3, yaw: float, preview: bool, window: bool = false) -> void:
 	var collision_size := Vector3(size.z, size.y, size.x) if absf(sin(yaw)) > 0.5 else size
 	box(parent, collision_size, at + Vector3.UP * size.y / 2, Color.WHITE, not preview).hide()
-	parent.add_child(Assets.fit("window_wall" if window else "wood_wall", size, at, yaw))
+	var wall := Assets.fit("window_wall" if window else "wood_wall", size, at, yaw)
+	wall.set_meta("wall_fade",true)
+	parent.add_child(wall)
 
 static func box(parent: Node3D, size: Vector3, position: Vector3, color: Color, solid: bool = false) -> MeshInstance3D:
 	var mesh := Factory.create_box(size, color)
@@ -89,6 +91,7 @@ static func make(piece: Resource, record: Dictionary, preview: bool = false) -> 
 			if components.has("Door"):
 				var leaf := box(door, Vector3(1.5, 2.4, 0.1), Vector3(0, 1.2, 0), Color(0.28, 0.16, 0.08))
 				leaf.name = "Leaf"
+				leaf.set_meta("wall_fade",true)
 			door.set_meta("ready", components.has("Roof") and (components.has("Door") or not piece.slots.has("Door")))
 			root.add_child(door)
 		if components.has("Bed"):

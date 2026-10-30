@@ -138,6 +138,7 @@ func open_town() -> void:
 		return
 	major_title.cancel()
 	_previous_process_mode = process_mode
+	$MeleeHero.camera_rig.set_active(false)
 	$TouchUI.hide()
 	hide()
 	process_mode = Node.PROCESS_MODE_DISABLED
@@ -169,6 +170,7 @@ func close_town() -> void:
 	process_mode = _previous_process_mode
 	show()
 	$TouchUI.show()
+	$MeleeHero.camera_rig.set_active(true)
 	preload("res://scripts/utilities/services.gd").game_state().set_mode(0)
 
 func _exit_tree() -> void:
@@ -182,6 +184,8 @@ func _load_floor() -> void:
 		return
 	$MeleeHero.position = floor_generator.cell_to_world(floor_generator.spawn_cell) + Vector3.UP * 0.1
 	$MeleeHero.velocity = Vector3.ZERO
+	var bindings: Array[Node]=[floor_generator.wall_fade]
+	$MeleeHero.camera_rig.set_wall_bindings(bindings)
 	$MeleeHero.camera_rig.snap()
 	if titles_ready: _announce_entry()
 

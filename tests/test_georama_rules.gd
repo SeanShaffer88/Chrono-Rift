@@ -156,7 +156,10 @@ func _test_views() -> void:
 	view.set_editing(false)
 	var model: Node3D = view._models["orb_mayor_house"]
 	check(model == original_model, "camera mode change retains the same physical town objects")
-	check(view.get_node("MeleeHero").camera.current and not view.editing, "walking mode switches behind the hero in the same 3D town")
+	check(view.get_node("MeleeHero").camera.current and not view.editing and view.get_node("MeleeHero").camera.projection==Camera3D.PROJECTION_ORTHOGONAL and is_equal_approx(view.get_node("MeleeHero").camera.size,14.0), "Town walking uses the same fixed isometric gameplay view")
+	var supported := true
+	for binding: Node in view.get_node("MeleeHero").camera_rig.wall_bindings: supported=supported and binding.unsupported_count==0
+	check(supported,"Every actual town wall/door material supports preserved fade variants")
 	check(model.has_node("Bed") and model.has_node("Stove") and view._residents.has("orb_mayor_house"), "assembled furnishings and resident exist as physical 3D objects")
 	view.get_node("MeleeHero").position = model.to_global(Vector3(0, 0.1, -2.3))
 	view._process(0.01)
@@ -165,6 +168,13 @@ func _test_views() -> void:
 	var query := PhysicsRayQueryParameters3D.create(model.to_global(Vector3(0, 1, -2)), model.to_global(Vector3(0, 1, -4)), 1)
 	await physics_frame
 	check(view.get_world_3d().direct_space_state.intersect_ray(query).is_empty(), "open doorway provides a real collision-free entrance")
+	view.set_editing(true)
+	var restored := true
+	for binding: Node in view.get_node("MeleeHero").camera_rig.wall_bindings: restored=restored and not binding.active
+	check(restored and model.get_node("Roof").visible==false and view.get_node("CameraPivot/Camera3D").current,"Returning to edit relinquishes gameplay fade and restores overhead camera ownership")
+	view._process(0.01)
+	check(model.get_node("Roof").visible,"Existing roof visibility returns in Georama editing")
+	view.set_editing(false)
 	view.talk_nearest()
 	check(state.town_objects.orb_mayor_house.requests_known and view._dialog.visible, "in-person talk opens resident dialogue and reveals requests")
 	view.queue_free()

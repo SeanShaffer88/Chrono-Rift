@@ -25,7 +25,6 @@ light_color = Color(1, 0.92, 0.79, 1)
 light_energy = 0.6
 shadow_enabled = true
 [node name="MeleeHero" parent="." instance=ExtResource("2")]
-camera_pitch_degrees = -20.0
 [node name="CameraPivot" type="Node3D" parent="."]
 [node name="Camera3D" type="Camera3D" parent="CameraPivot"]
 projection = 1

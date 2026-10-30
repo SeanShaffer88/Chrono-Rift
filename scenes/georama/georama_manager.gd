@@ -391,6 +391,8 @@ func _position_model(model: Node3D, piece: Resource, cell: Vector2i, rotation_va
 	model.rotation.y = -rotation_value * PI / 2
 
 func _render_town() -> void:
+	$MeleeHero.camera_rig.set_wall_bindings([])
+	var fade_owners: Array[Node]=[]
 	for model: Node3D in _models.values():
 		model.free()
 	for resident: Node3D in _residents.values():
@@ -406,11 +408,16 @@ func _render_town() -> void:
 		_position_model(model, piece, record.cell, record.rotation)
 		add_child(model)
 		_models[id] = model
+		var fade_roots: Array[Node]=[]
+		for child: Node in model.find_children("*","Node",true,false):
+			if child.has_meta("wall_fade"): fade_roots.append(child)
+		if not fade_roots.is_empty(): fade_owners.append(preload("res://scripts/utilities/wall_fade_bindings.gd").create(model,fade_roots))
 		if grid.resident_active(id):
 			var resident := Visuals.resident(piece.resident_name)
 			add_child(resident)
 			resident.position = model.to_global(Vector3(0, 0, -piece.dimensions.y - 1.3))
 			_residents[id] = resident
+	$MeleeHero.camera_rig.set_wall_bindings(fade_owners)
 
 func set_editing(value: bool) -> void:
 	editing = value
@@ -432,9 +439,11 @@ func set_editing(value: bool) -> void:
 	_layout_ui()
 	$MeleeHero.process_mode = Node.PROCESS_MODE_DISABLED if value else Node.PROCESS_MODE_INHERIT
 	if value:
+		$MeleeHero.camera_rig.set_active(false)
 		$CameraPivot/Camera3D.make_current()
 	else:
 		$MeleeHero.camera.make_current()
+		$MeleeHero.camera_rig.set_active(true)
 
 func talk_nearest() -> void:
 	var nearest := ""

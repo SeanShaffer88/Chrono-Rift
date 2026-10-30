@@ -31,7 +31,7 @@ func _run() -> void:
 			if not dungeon.floor_generator.layout.walkable.has(cell+Vector2i.DOWN) and not dungeon.floor_generator.layout.walkable.has(cell+Vector2i.RIGHT): corner=cell
 		hero.position=dungeon.floor_generator.cell_to_world(corner)+Vector3.UP*0.1
 		hero.camera_rig.restore_view(0,deg_to_rad(-40))
-		check(absf(hero.camera_rig.rescue_offset)>0.1,"Biome %d corner uses lateral escape" % number)
+		check(hero.camera.projection==Camera3D.PROJECTION_ORTHOGONAL and is_equal_approx(hero.camera.size,14.0),"Biome %d corner retains fixed isometric framing" % number)
 		await capture("biome-%d-corner" % number)
 		var expected: float=hero.camera_rig.get_preferred_yaw()
 		var data:=preload("res://scripts/persistence/save_data.gd").actor(hero)
@@ -45,7 +45,7 @@ func _run() -> void:
 		drag.index=42
 		drag.relative=Vector2(80,10)
 		hero.camera_rig.input(drag)
-		check(hero.camera_rig.get_preferred_yaw()!=expected,"Biome %d right touch changes intended view" % number)
+		check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),expected),"Biome %d right touch cannot rotate the fixed view" % number)
 		touch.pressed=false
 		hero.camera_rig.input(touch)
 		hero.camera_pivot.rotation.y=hero.camera_rig.get_preferred_yaw()
