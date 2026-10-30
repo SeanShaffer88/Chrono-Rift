@@ -22,13 +22,23 @@ func start(owner_dungeon: Node, path: String = "user://saves/autosave.json") -> 
 	print("SAVE_BUILD ",ProjectSettings.get_setting("application/config/version","unknown"))
 	dungeon = owner_dungeon
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	store = Store.new(path, Data.validate)
+	store = _make_store(path)
 	var result: Dictionary = store.read_save()
 	_publish_diagnostic()
 	_recovered = result.status == "recovered"
 	if result.status in ["ok", "recovered"]:
 		_restore(result.data)
 		_set_status("Recovered backup save" if _recovered else "Save loaded")
+	elif result.status=="missing" and not store.blocked:
+		var fresh := Data.make_fresh_snapshot(_fresh_seed())
+		if fresh.is_empty():
+			_set_status("Save unavailable — fresh expedition validation failed")
+			return
+		var error: Error=store.write_save(fresh)
+		# No existing save was present. A failed write still keeps this chosen run in memory.
+		_restore(fresh)
+		_publish_diagnostic()
+		_set_status("Saved" if error==OK else "Save failed — retrying this expedition")
 	elif result.status != "missing":
 		_set_status("Save unavailable — progress not saved")
 	_loaded = true
@@ -40,6 +50,17 @@ func start(owner_dungeon: Node, path: String = "user://saves/autosave.json") -> 
 		_listen(Signal(Services.event_bus(), name_value))
 	_listen(dungeon.get_node("MeleeHero").hp_changed)
 	queue_save()
+
+func _make_store(path: String) -> RefCounted:
+	return Store.new(path,Data.validate)
+
+func _fresh_seed() -> int:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var chosen := int(rng.randi())-2147483648
+	if is_instance_valid(dungeon) and chosen==dungeon.dungeon_seed:
+		chosen=-2147483648 if chosen==2147483647 else chosen+1
+	return chosen
 
 func _listen(event: Signal) -> void:
 	var callback := func(_a: Variant = null, _b: Variant = null, _c: Variant = null): queue_save()
@@ -101,7 +122,7 @@ func details(include_status: bool=true) -> String:
 func start_fresh_with_backup() -> Dictionary:
 	if _recovering or not can_start_fresh():
 		return {"ok":false,"error":ERR_BUSY,"reason":"recovery_pending","archive_path":"","rollback_ok":true}
-	var fresh := Data.make_fresh_snapshot(dungeon.dungeon_seed)
+	var fresh := Data.make_fresh_snapshot(_fresh_seed())
 	if fresh.is_empty(): return {"ok":false,"error":ERR_INVALID_DATA,"reason":"validation_failed","archive_path":"","rollback_ok":true}
 	_recovering=true
 	var paused := get_tree().paused

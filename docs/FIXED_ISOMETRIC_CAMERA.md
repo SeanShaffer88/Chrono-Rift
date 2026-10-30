@@ -4,7 +4,7 @@ Dungeon play and town walking use the approved fixed view: orthographic
 KEEP_HEIGHT size 14, yaw 45 degrees, pitch -55 degrees and follow distance 14.
 The angle and framing were selected from native size-12/14/16 comparisons using
 the existing art. They are not claimed as another game's internal settings.
-Georama editing retains its existing overhead camera, orbit and pinch controls.
+Georama editing starts with the same isometric framing, while retaining orbit, tilt, pan and pinch controls. User adjustments persist during editing; returning from walking restores the default.
 
 Gameplay camera keys, right-side drags and lock-on no longer rotate the view.
 Lock-on still changes combat facing and its existing movement multiplier.
