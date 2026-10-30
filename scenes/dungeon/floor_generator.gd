@@ -31,6 +31,7 @@ var key_collected := false
 var guard_defeated := false
 var cleared := false
 var content: Node3D = null
+var wall_fade: Node
 var guard: Node3D = null
 var collected_healing: Array[String] = []
 
@@ -71,6 +72,7 @@ func generate(seed_value: int, number: int = 1, build_geometry: bool = true) -> 
 	if is_instance_valid(content):
 		content.free()
 	content = null
+	wall_fade=null
 	guard = null
 	if build_geometry:
 		_build_content()
@@ -169,6 +171,11 @@ func _build_content() -> void:
 		if light_needed:
 			light_count += 1
 
+	var fade_roots: Array[Node]=[]
+	for name_value: String in ["WallBatch","WallDetailBatch","PierBatch","MasonryCourses","SolidRockBacking","FacetedSlateCap"]:
+		var geometry_root := content.find_child(name_value,true,false)
+		if geometry_root!=null: fade_roots.append(geometry_root)
+	wall_fade=preload("res://scripts/utilities/wall_fade_bindings.gd").create(content,fade_roots)
 	add_child(content)
 
 func _add_collision(body: StaticBody3D, size: Vector3, position_value: Vector3) -> void:

@@ -1,4 +1,9 @@
-# Camera body visibility
+# Previous camera investigation (superseded)
+
+This records the 0.1.10 camera investigation. Gameplay now uses the fixed view
+and localized walls described in [FIXED_ISOMETRIC_CAMERA.md](FIXED_ISOMETRIC_CAMERA.md).
+The old yaw-search behavior below is historical; cached body-envelope points
+remain in use only for wall-fade activation.
 
 A reproducible steep corner had a clear six-metre camera arm while masonry hid
 the boots and torso. Camera-arm clearance alone did not establish visibility.

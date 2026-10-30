@@ -148,7 +148,7 @@ func run_assertions() -> void:
 	check(store.write_save(data) == OK, "Valid test save is ready for actual scene restoration")
 	state.reset()
 	dungeon.start_saving(path)
-	check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),0.63) and is_equal_approx(hero.camera_rig.preferred_pitch,deg_to_rad(-60)),"Actual scene load restores intended yaw and -60-degree manual pitch")
+	check(is_equal_approx(hero.camera_rig.get_preferred_yaw(),PI/4) and is_equal_approx(hero.camera_rig.preferred_pitch,deg_to_rad(-55)),"Existing version4 camera values load into fixed isometric framing without resetting progress")
 	check(state.character_inventories.melee_hero.equipped_weapon.weapon_id=="battle_wrench" and is_equal_approx(state.character_inventories.melee_hero.equipped_weapon.current_durability,53),"Actual load retains legacy wrench selection and wear alongside new starter")
 	check(state.active_character_id == "riftwarden" and state.thirst == 42.5, "Active character and thirst restore")
 	check(state.weapon_inventory.equipped_weapon.is_broken and not state.weapon_inventory.equipped_weapon.destroy_on_break, "Broken protected starter remains owned and equipped")

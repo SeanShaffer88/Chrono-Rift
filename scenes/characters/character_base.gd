@@ -24,8 +24,8 @@ var lock_marker: Label3D
 @export var acceleration: float = 40.0
 @export var deceleration: float = 50.0
 @export var turn_speed: float = 14.0
-@export var camera_distance: float = 6.0
-@export var camera_pitch_degrees: float = -40.0
+@export var camera_distance: float = 14.0
+@export var camera_pitch_degrees: float = -55.0
 @export var camera_height: float = 1.4
 @export var camera_turn_speed: float = 2.5
 @export var lock_on_range: float = 9.0
@@ -150,6 +150,9 @@ func _tick(_delta: float) -> void:
 func can_move() -> bool:
 	return not is_dead()
 
+func _exit_tree() -> void:
+	if camera_rig!=null: camera_rig.set_active(false)
+
 func can_turn() -> bool:
 	return can_move()
 
@@ -182,12 +185,7 @@ func get_move_input() -> Vector2:
 	return value
 
 func get_camera_relative_direction(input: Vector2) -> Vector3:
-	if input.length_squared() < 0.0001:
-		return Vector3.ZERO
-	var yaw := camera_pivot.global_rotation.y if is_instance_valid(camera_pivot) else 0.0
-	var dir := Basis(Vector3.UP, yaw) * Vector3(input.x, 0.0, input.y)
-	dir.y = 0.0
-	return dir.limit_length(1.0)
+	return camera_rig.ground_direction(input)
 
 func is_lock_on_held() -> bool:
 	if force_lock_on:

@@ -104,8 +104,8 @@ func run_assertions() -> void:
 		await physics_frame
 		hunter._physics_process(1.0/60)
 		hero.camera_rig.update(1.0/60)
-		camera_safe=camera_safe and hero.spring_arm.spring_length<=hero.camera_rig._safe_length(hero.spring_arm.rotation.x,hero.camera_pivot.rotation.y)+0.01 and hero.spring_arm.rotation.x>=deg_to_rad(-60.01) and hero.spring_arm.rotation.x<=deg_to_rad(-34.99)
-	check(camera_safe,"Corner camera stays sphere-clear and bounded during real Hunter charge")
+		camera_safe=camera_safe and hero.camera.projection==Camera3D.PROJECTION_ORTHOGONAL and is_equal_approx(hero.camera.size,14.0) and is_equal_approx(hero.camera_rig.get_preferred_yaw(),PI/4) and is_equal_approx(hero.spring_arm.rotation.x,deg_to_rad(-55))
+	check(camera_safe,"Fixed corner framing remains unchanged during real Hunter charge")
 	check(hero.current_hp==90,"Real Hunter active overlap deals exactly one10-damage hit")
 	camera_side.free()
 	camera_back.free()
