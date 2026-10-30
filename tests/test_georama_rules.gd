@@ -117,13 +117,37 @@ func _test_views() -> void:
 	var view: Variant = load("res://scenes/georama/georama_manager.tscn").instantiate()
 	root.add_child(view)
 	await process_frame
-	check(view.editing and view.get_node("CameraPivot/Camera3D").current, "town opens in overhead Georama mode")
+	var editor: Camera3D = view.get_node("CameraPivot/Camera3D")
+	var pivot: Node3D = view.get_node("CameraPivot")
+	check(view.editing and editor.current and editor.projection == Camera3D.PROJECTION_ORTHOGONAL and editor.keep_aspect == Camera3D.KEEP_HEIGHT and is_equal_approx(editor.size, 14.0), "town editor opens with gameplay isometric projection and framing")
+	check(is_equal_approx(pivot.rotation.y, deg_to_rad(45.0)) and is_equal_approx(editor.rotation.x, deg_to_rad(-55.0)) and is_equal_approx(editor.position.length(), 14.0), "editor default uses gameplay angle and follow distance")
+	var known_point := Vector3(71, 0, 73)
+	var projected: Variant = view.ground_point(editor.unproject_position(known_point))
+	check(projected is Vector3 and projected.distance_to(known_point) < 0.001, "isometric editor ground projection preserves placement coordinates")
+	for tilt_value in [25.0,55.0,85.0]:
+		view._pitch=tilt_value
+		editor.size=110.0
+		view._update_camera()
+		var lowest_origin: Vector3=editor.project_ray_origin(Vector2(0,root.get_visible_rect().size.y))
+		check(lowest_origin.y>0.0 and editor.position.length()<editor.far*.5,"maximum editor zoom keeps ground ray origins above terrain at tilt "+str(tilt_value))
+	view._default_editor_view()
+	view.orbit(35)
+	view.tilt(5)
+	editor.size = 20.0
+	pivot.position += Vector3(3, 0, -4)
+	var adjusted := editor.global_transform
+	view._refresh()
+	view._layout_ui()
+	view.set_editing(true)
+	check(editor.global_transform.is_equal_approx(adjusted) and editor.size == 20.0, "refresh, layout and repeated edit entry preserve user camera adjustments")
 	check(view._camera_bar.get_global_rect().end.y <= root.get_visible_rect().size.y, "placement and camera controls stay inside the viewport: "+str(view._camera_bar.get_global_rect())+" viewport="+str(root.get_visible_rect()))
 	var record: Dictionary = state.town_objects.orb_mayor_house.duplicate(true)
 	view.selected_id = "orb_mayor_house"
 	view.begin_selected()
 	view.pending_cell = Vector2i(40, 40)
+	var camera_before_rotation := editor.global_transform
 	view.rotate_pending()
+	check(editor.global_transform.is_equal_approx(camera_before_rotation), "building rotation leaves editor camera unchanged")
 	view.cancel_placement()
 	check(state.town_objects.orb_mayor_house == record, "canceling a placement preview restores the original model and data")
 	view.begin_selected()
@@ -169,6 +193,7 @@ func _test_views() -> void:
 	await physics_frame
 	check(view.get_world_3d().direct_space_state.intersect_ray(query).is_empty(), "open doorway provides a real collision-free entrance")
 	view.set_editing(true)
+	check(is_equal_approx(editor.size, 14.0) and is_equal_approx(pivot.rotation.y, deg_to_rad(45.0)) and pivot.global_position.is_equal_approx(view.get_node("MeleeHero").global_position + Vector3.UP * view.get_node("MeleeHero").camera_height), "walking to editing restores default framing centered on the current hero")
 	var restored := true
 	for binding: Node in view.get_node("MeleeHero").camera_rig.wall_bindings: restored=restored and not binding.active
 	check(restored and model.get_node("Roof").visible==false and view.get_node("CameraPivot/Camera3D").current,"Returning to edit relinquishes gameplay fade and restores overhead camera ownership")

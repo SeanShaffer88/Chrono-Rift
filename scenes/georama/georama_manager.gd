@@ -7,6 +7,7 @@ const TextPages=preload("res://scenes/ui/paged_text.gd")
 const Grid := preload("res://scenes/georama/town_grid.gd")
 const Visuals := preload("res://scenes/georama/town_visuals.gd")
 const Services := preload("res://scripts/utilities/services.gd")
+const VIEW_SETTINGS=preload("res://data/camera/isometric_view_settings.tres")
 const EnvironmentArt = preload("res://scenes/environment/environment_art.gd")
 var grid := Grid.new()
 var editing := true
@@ -23,6 +24,7 @@ var _center := Vector2.ZERO
 var _span := 0.0
 var _angle := 0.0
 var _pitch := 55.0
+var _editor_initialized := false
 var _preview: Node3D
 var _models: Dictionary = {}
 var _residents: Dictionary = {}
@@ -420,6 +422,7 @@ func _render_town() -> void:
 	$MeleeHero.camera_rig.set_wall_bindings(fade_owners)
 
 func set_editing(value: bool) -> void:
+	var enter_default := value and (not editing or not _editor_initialized)
 	editing = value
 	touches.clear()
 	gesture = false
@@ -440,6 +443,7 @@ func set_editing(value: bool) -> void:
 	$MeleeHero.process_mode = Node.PROCESS_MODE_DISABLED if value else Node.PROCESS_MODE_INHERIT
 	if value:
 		$MeleeHero.camera_rig.set_active(false)
+		if enter_default: _default_editor_view()
 		$CameraPivot/Camera3D.make_current()
 	else:
 		$MeleeHero.camera.make_current()
@@ -501,12 +505,29 @@ func _process(_delta: float) -> void:
 func orbit(degrees: float) -> void:
 	$CameraPivot.rotation.y += deg_to_rad(degrees)
 
+func _default_editor_view() -> void:
+	var hero: Node3D=$MeleeHero
+	$CameraPivot.global_transform=Transform3D(Basis(Vector3.UP,deg_to_rad(VIEW_SETTINGS.yaw_degrees)),hero.global_position+Vector3.UP*hero.camera_height)
+	var camera: Camera3D=$CameraPivot/Camera3D
+	camera.projection=Camera3D.PROJECTION_ORTHOGONAL
+	camera.keep_aspect=Camera3D.KEEP_HEIGHT
+	camera.near=0.08
+	camera.size=VIEW_SETTINGS.orthographic_size
+	_pitch=-VIEW_SETTINGS.pitch_degrees
+	_editor_initialized=true
+	_update_camera()
+
 func tilt(degrees: float) -> void:
 	_pitch = clampf(_pitch + degrees, 25, 85)
 	_update_camera()
 
 func _update_camera() -> void:
-	$CameraPivot/Camera3D.position = Vector3(0, sin(deg_to_rad(_pitch)) * 80, cos(deg_to_rad(_pitch)) * 80)
+	var camera: Camera3D=$CameraPivot/Camera3D
+	var angle := deg_to_rad(_pitch)
+	var distance := VIEW_SETTINGS.follow_distance
+	if camera.size>VIEW_SETTINGS.orthographic_size:
+		distance=maxf(distance,(camera.size*.5*cos(angle)+camera.near+1.0)/sin(angle))
+	camera.position = Vector3(0, sin(angle) * distance, cos(angle) * distance)
 	$CameraPivot/Camera3D.rotation.x = -deg_to_rad(_pitch)
 
 func ground_point(position_value: Vector2) -> Variant:
@@ -569,7 +590,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if from != null and to != null:
 				$CameraPivot.position += from - to
 			if _span > 1 and span > 1:
-				$CameraPivot/Camera3D.size = clampf($CameraPivot/Camera3D.size * _span / span, 18, 110)
+				$CameraPivot/Camera3D.size = clampf($CameraPivot/Camera3D.size * _span / span, 8, 110)
+				_update_camera()
 			$CameraPivot.rotation.y -= angle_difference(_angle, angle)
 			_center = center
 			_span = span
@@ -582,7 +604,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			_aim(event.position)
 		elif event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
-			$CameraPivot/Camera3D.size = clampf($CameraPivot/Camera3D.size + (-3 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 3), 18, 110)
+			$CameraPivot/Camera3D.size = clampf($CameraPivot/Camera3D.size + (-3 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 3), 8, 110)
+			_update_camera()
 
 func _notification(what: int) -> void:
 	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED]:
